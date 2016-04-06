@@ -51,7 +51,7 @@ In `manifest.json`, load the file `Configs.js` from both the background page and
 ...
 ```
 
-And, define an instance with default values for each namespace like:
+And, define an instance with default values on each namespace like:
 
 ```javascript
 // configs.js
@@ -63,7 +63,7 @@ var configs = new Configs({
 });
 ```
 
-The instance has only a property `$loaded` by default. Because it is a `Promise`, you can do something after all stored user values are loaded:
+The instance has a built-in property `$loaded`. It is a `Promise`, so you can do something after all stored user values are loaded:
 
 ```javascript
 configs.$loaded.then(function() {
@@ -97,6 +97,6 @@ You still can get default values easily, with a prefix `$default.`:
 console.log(configs.$default.enabled); // => true (default value)
 configs.enabled = configs.$default.enabled; // reset to default
 
-configs.$reset(); // reset all to default values
+configs.$reset(); // reset all to default
 ```
 
