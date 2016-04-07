@@ -15,7 +15,7 @@ In `manifest.json`, load the file `Configs.js` from both the background page and
   "background": {
     "scripts": [
       "path/to/Configs.js",
-      "path/to/configs.js"
+      "path/to/common.js"
     ]
   },
   "content_scripts": [
@@ -26,7 +26,7 @@ In `manifest.json`, load the file `Configs.js` from both the background page and
       ],
       "js": [
         "path/to/Configs.js",
-        "path/to/configs.js",
+        "path/to/common.js",
         "..."
       ],
       "run_at": "document_start"
@@ -47,14 +47,14 @@ In `manifest.json`, load the file `Configs.js` from both the background page and
 ```html
 <!DOCTYPE html>
 <script type="application/javascript" src="./Configs.js"></script>
-<script type="application/javascript" src="./configs.js"></script>
+<script type="application/javascript" src="./common.js"></script>
 ...
 ```
 
 And, define an instance with default values on each namespace like:
 
 ```javascript
-// configs.js
+// common.js
 
 var configs = new Configs({
   enabled: true,
