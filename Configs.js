@@ -25,6 +25,20 @@ Configs.prototype = {
 		}
 	},
 
+	$addObserver : function(aObserver)
+	{
+		var index = this._observers.indexOf(aObserver);
+		if (index < 0)
+			this._observers.push(aObserver);
+	},
+	$removeObserver : function(aObserver)
+	{
+		var index = this._observers.indexOf(aObserver);
+		if (index > -1)
+			this._observers.splice(index, 1);
+	},
+	_observers : [],
+
 	get _shouldUseStorage()
 	{
 		return typeof chrome.storage !== 'undefined';
@@ -125,9 +139,13 @@ Configs.prototype = {
 				break;
 			case 'Configs:updated':
 				this._lastValues[aMessage.key] = aMessage.value;
+				this._notifyToObservers(aMessage.key);
 				break;
 			case 'Configs:reseted':
 				this._applyValues(this.$default);
+				Object.keys(this.$default).forEach(function(aKey) {
+					this._notifyToObservers(aKey);
+				}, this);
 				break;
 		}
 	},
@@ -173,5 +191,14 @@ Configs.prototype = {
 			type   : 'Configs:loaded',
 			values : this._lastValues
 		});
+	},
+	_notifyToObservers : function(aKey)
+	{
+		this._observers.forEach(function(aObserver) {
+			if (typeof aObserver === 'function')
+				aObserver(aKey);
+			else if (aObserver && typeof aObserver.onChangeConfig === 'function')
+				aObserver.onChangeConfig();
+		}, this);
 	}
 };
