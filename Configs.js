@@ -65,6 +65,7 @@ Configs.prototype = {
 
 		if (this.$shouldUseStorage) { // background mode
 			this.$log('load: try load from storage');
+			chrome.storage.onChanged.addListener(this.$onChanged.bind(this));
 			return this._promisedLoad = new Promise((function(aResolve, aReject) {
 				try {
 					chrome.storage.local.get(this.$default, (function(aValues) {
@@ -154,6 +155,15 @@ Configs.prototype = {
 				}, this);
 				break;
 		}
+	},
+
+	$onChanged : function(aChanges)
+	{
+		var changedKeys = Object.keys(aChanges);
+		changedKeys.forEach(function(aKey) {
+			this.$lastValues[aKey] = aChanges[aKey].newValue;
+			this.$notifyToObservers(aKey);
+		}, this);
 	},
 
 	$broadcast : function(aMessage)
