@@ -6,15 +6,15 @@
 
 function Configs(aDefaults) {
 	this.$default = aDefaults;
-	this._lastValues = {};
-	this.$loaded = this._load();
+	this.$lastValues = {};
+	this.$loaded = this.$load();
 }
 Configs.prototype = {
 	$reset : function()
 	{
-		this._applyValues(this.$default);
-		if (this._shouldUseStorage) {
-			this._broadcast({
+		this.$applyValues(this.$default);
+		if (this.$shouldUseStorage) {
+			this.$broadcast({
 				type : 'Configs:reseted'
 			});
 		}
@@ -27,26 +27,26 @@ Configs.prototype = {
 
 	$addObserver : function(aObserver)
 	{
-		var index = this._observers.indexOf(aObserver);
+		var index = this.$observers.indexOf(aObserver);
 		if (index < 0)
-			this._observers.push(aObserver);
+			this.$observers.push(aObserver);
 	},
 	$removeObserver : function(aObserver)
 	{
-		var index = this._observers.indexOf(aObserver);
+		var index = this.$observers.indexOf(aObserver);
 		if (index > -1)
-			this._observers.splice(index, 1);
+			this.$observers.splice(index, 1);
 	},
-	_observers : [],
+	$observers : [],
 
-	get _shouldUseStorage()
+	get $shouldUseStorage()
 	{
 		return typeof chrome.storage !== 'undefined';
 	},
 
-	_log : function(aMessage, ...aArgs)
+	$log : function(aMessage, ...aArgs)
 	{
-		var type = this._shouldUseStorage ? 'storage' : 'bridge' ;
+		var type = this.$shouldUseStorage ? 'storage' : 'bridge' ;
 		aMessage = 'Configs[' + type + '] ' + aMessage;
 		if (typeof log === 'function')
 			log(aMessage, ...aArgs);
@@ -54,40 +54,40 @@ Configs.prototype = {
 			console.log(aMessage, ...aArgs);
 	},
 
-	_load : function()
+	$load : function()
 	{
-		this._log('load');
+		this.$log('load');
 		if (this._promisedLoad)
 			return this._promisedLoad;
 
-		this._applyValues(this.$default);
-		chrome.runtime.onMessage.addListener(this._onMessage.bind(this));
+		this.$applyValues(this.$default);
+		chrome.runtime.onMessage.addListener(this.$onMessage.bind(this));
 
-		if (this._shouldUseStorage) { // background mode
-			this._log('load: try load from storage');
+		if (this.$shouldUseStorage) { // background mode
+			this.$log('load: try load from storage');
 			return this._promisedLoad = new Promise((function(aResolve, aReject) {
 				try {
 					chrome.storage.local.get(this.$default, (function(aValues) {
-						this._log('load: loaded', aValues);
-						this._applyValues(aValues);
-						this._notifyLoaded();
+						this.$log('load: loaded', aValues);
+						this.$applyValues(aValues);
+						this.$notifyLoaded();
 						aResolve();
 					}).bind(this));
 				}
 				catch(e) {
-					this._log('load: failed', e);
+					this.$log('load: failed', e);
 					aReject(e);
 				}
 			}).bind(this));
 		}
 		else { // content mode
-			this._log('load: initialize promise');
+			this.$log('load: initialize promise');
 			this._promisedLoad = new Promise((function(aResolve, aReject) {
 				this._promisedLoadResolver = aResolve;
 			}).bind(this))
 				.then((function(aValues) {
-					this._log('load: promise resolved');
-					this._applyValues(aValues);
+					this.$log('load: promise resolved');
+					this.$applyValues(aValues);
 				}).bind(this));
 			chrome.runtime.sendMessage({
 				type : 'Configs:load'
@@ -95,34 +95,34 @@ Configs.prototype = {
 			return this._promisedLoad;
 		}
 	},
-	_applyValues : function(aValues)
+	$applyValues : function(aValues)
 	{
 		Object.keys(aValues).forEach(function(aKey) {
-			this._lastValues[aKey] = aValues[aKey];
+			this.$lastValues[aKey] = aValues[aKey];
 			if (aKey in this)
 				return;
 			Object.defineProperty(this, aKey, {
 				get: (function() {
-					return this._lastValues[aKey];
+					return this.$lastValues[aKey];
 				}).bind(this),
 				set: (function(aValue) {
-					this._log('set: ' + aKey + ' = ' + aValue);
-					this._lastValues[aKey] = aValue;
-					this._notifyUpdated(aKey);
+					this.$log('set: ' + aKey + ' = ' + aValue);
+					this.$lastValues[aKey] = aValue;
+					this.$notifyUpdated(aKey);
 					return aValue;
 				}).bind(this)
 			});
 		}, this);
 	},
 
-	_onMessage : function(aMessage)
+	$onMessage : function(aMessage)
 	{
-		this._log('onMessage: ' + aMessage.type);
+		this.$log('onMessage: ' + aMessage.type);
 		switch (aMessage.type)
 		{
 			// background
 			case 'Configs:load':
-				this._load().then(this._notifyLoaded.bind(this));
+				this.$load().then(this.$notifyLoaded.bind(this));
 				break;
 			case 'Configs:update':
 				this[aMessage.key] = aMessage.value;
@@ -138,19 +138,19 @@ Configs.prototype = {
 				delete this._promisedLoadResolver;
 				break;
 			case 'Configs:updated':
-				this._lastValues[aMessage.key] = aMessage.value;
-				this._notifyToObservers(aMessage.key);
+				this.$lastValues[aMessage.key] = aMessage.value;
+				this.$notifyToObservers(aMessage.key);
 				break;
 			case 'Configs:reseted':
-				this._applyValues(this.$default);
+				this.$applyValues(this.$default);
 				Object.keys(this.$default).forEach(function(aKey) {
-					this._notifyToObservers(aKey);
+					this.$notifyToObservers(aKey);
 				}, this);
 				break;
 		}
 	},
 
-	_broadcast : function(aMessage)
+	$broadcast : function(aMessage)
 	{
 		chrome.tabs.query({}, (function(aTabs) {
 			aTabs.forEach(function(aTab) {
@@ -158,26 +158,26 @@ Configs.prototype = {
 			}, this);
 		}).bind(this));
 	},
-	_notifyLoaded : function()
+	$notifyLoaded : function()
 	{
-		this._broadcast({
+		this.$broadcast({
 			type   : 'Configs:loaded',
-			values : this._lastValues
+			values : this.$lastValues
 		});
 	},
-	_notifyUpdated : function(aKey)
+	$notifyUpdated : function(aKey)
 	{
 		var value = this[aKey];
-		if (this._shouldUseStorage) {
-			this._log('broadcast updated config: ' + aKey + ' = ' + value);
-			this._broadcast({
+		if (this.$shouldUseStorage) {
+			this.$log('broadcast updated config: ' + aKey + ' = ' + value);
+			this.$broadcast({
 				type  : 'Configs:updated',
 				key   : aKey,
 				value : value
 			});
 		}
 		else {
-			this._log('request to store config: ' + aKey + ' = ' + value);
+			this.$log('request to store config: ' + aKey + ' = ' + value);
 			chrome.runtime.sendMessage({
 				type  : 'Configs:update',
 				key   : aKey,
@@ -185,16 +185,16 @@ Configs.prototype = {
 			});
 		}
 	},
-	_notifyLoaded : function()
+	$notifyLoaded : function()
 	{
-		this._broadcast({
+		this.$broadcast({
 			type   : 'Configs:loaded',
-			values : this._lastValues
+			values : this.$lastValues
 		});
 	},
-	_notifyToObservers : function(aKey)
+	$notifyToObservers : function(aKey)
 	{
-		this._observers.forEach(function(aObserver) {
+		this.$observers.forEach(function(aObserver) {
 			if (typeof aObserver === 'function')
 				aObserver(aKey);
 			else if (aObserver && typeof aObserver.onChangeConfig === 'function')
