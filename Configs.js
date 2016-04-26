@@ -122,13 +122,19 @@ Configs.prototype = {
 		{
 			// background
 			case 'Configs:load':
+				if (!this.$broadcasting) {
 				this.$load().then(this.$notifyLoaded.bind(this));
+				}
 				break;
 			case 'Configs:update':
+				if (!this.$broadcasting) {
 				this[aMessage.key] = aMessage.value;
+				}
 				break;
 			case 'Configs:reset':
+				if (!this.$broadcasting) {
 				this.$reset();
+				}
 				break;
 
 			// content
@@ -152,10 +158,23 @@ Configs.prototype = {
 
 	$broadcast : function(aMessage)
 	{
+		this.$broadcasting = true;
 		chrome.tabs.query({}, (function(aTabs) {
-			aTabs.forEach(function(aTab) {
-				chrome.tabs.sendMessage(aTab.id, aMessage);
+			var promises = aTabs.map(function(aTab) {
+				return new Promise(function(aResolve, aReject) {
+					chrome.tabs.sendMessage(
+						aTab.id,
+						aMessage,
+						null,
+						function() {
+							aResolve();
+						}
+					);
+				});
 			}, this);
+			Promise.all(promises).then((function() {
+				this.$broadcasting = false;
+			}).bind(this));
 		}).bind(this));
 	},
 	$notifyLoaded : function()
