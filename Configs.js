@@ -158,6 +158,8 @@ Configs.prototype = {
 
 	$broadcast : function(aMessage)
 	{
+		if (!chrome.tabs)
+			return;
 		this.$broadcasting = true;
 		chrome.tabs.query({}, (function(aTabs) {
 			var promises = aTabs.map(function(aTab) {
