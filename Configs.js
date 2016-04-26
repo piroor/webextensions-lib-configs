@@ -219,7 +219,7 @@ Configs.prototype = {
 			if (typeof aObserver === 'function')
 				aObserver(aKey);
 			else if (aObserver && typeof aObserver.onChangeConfig === 'function')
-				aObserver.onChangeConfig();
+				aObserver.onChangeConfig(aKey);
 		}, this);
 	}
 };
