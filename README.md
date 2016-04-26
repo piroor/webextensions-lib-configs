@@ -2,6 +2,9 @@
 
 Provides ability to store/load configurations.
 
+By the [bug 1197346](https://bugzilla.mozilla.org/show_bug.cgi?id=1197346), now we don't have to do inter-sandboxes comunication to read/write configuration values.
+After the bug, this library is still effective to observe dynamic change of configurations.
+
 ## Required permissions
 
  * `storage`
