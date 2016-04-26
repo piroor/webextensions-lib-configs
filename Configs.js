@@ -64,7 +64,7 @@ Configs.prototype = {
 		chrome.runtime.onMessage.addListener(this.$onMessage.bind(this));
 
 		if (this.$shouldUseStorage) { // background mode
-			this.$log('load: try load from storage');
+			this.$log('load: try load from storage on  ' + location.href);
 			chrome.storage.onChanged.addListener(this.$onChanged.bind(this));
 			return this._promisedLoad = new Promise((function(aResolve, aReject) {
 				try {
@@ -82,7 +82,7 @@ Configs.prototype = {
 			}).bind(this));
 		}
 		else { // content mode
-			this.$log('load: initialize promise');
+			this.$log('load: initialize promise on  ' + location.href);
 			this._promisedLoad = new Promise((function(aResolve, aReject) {
 				this._promisedLoadResolver = aResolve;
 			}).bind(this))
