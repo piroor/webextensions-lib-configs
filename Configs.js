@@ -123,17 +123,17 @@ Configs.prototype = {
 			// background
 			case 'Configs:load':
 				if (!this.$broadcasting) {
-				this.$load().then(this.$notifyLoaded.bind(this));
+					this.$load().then(this.$notifyLoaded.bind(this));
 				}
 				break;
 			case 'Configs:update':
 				if (!this.$broadcasting) {
-				this[aMessage.key] = aMessage.value;
+					this[aMessage.key] = aMessage.value;
 				}
 				break;
 			case 'Configs:reset':
 				if (!this.$broadcasting) {
-				this.$reset();
+					this.$reset();
 				}
 				break;
 
