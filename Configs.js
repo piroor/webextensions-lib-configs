@@ -14,14 +14,21 @@ Configs.prototype = {
 	{
 		this.$applyValues(this.$default);
 		if (this.$shouldUseStorage) {
-			this.$broadcast({
+			return this.$broadcast({
 				type : 'Configs:reseted'
 			});
 		}
 		else {
-			chrome.runtime.sendMessage({
+			return new Promise((function(aResolve, aReject) {
+				chrome.runtime.sendMessage(
+					{
 				type : 'Configs:reset'
-			});
+					},
+					function() {
+						aResolve();
+					}
+				);
+			}).bind(this));
 		}
 	},
 
@@ -117,23 +124,28 @@ Configs.prototype = {
 		}, this);
 	},
 
-	$onMessage : function(aMessage)
+	$onMessage : function(aMessage, aSender, aResponse)
 	{
-		this.$log('onMessage: ' + aMessage.type);
-		if (this.$broadcasting)
+		this.$log('onMessage: ' + aMessage.type, aSender);
+		if (this.$broadcasting) {
+			aResponse();
 			return;
+		}
 
 		switch (aMessage.type)
 		{
 			// background
 			case 'Configs:load':
-				this.$load().then(this.$notifyLoaded.bind(this));
+				this.$load()
+					.then(this.$notifyLoaded.bind(this))
+					.then(aResponse);
 				break;
 			case 'Configs:update':
 				this[aMessage.key] = aMessage.value;
+				aResponse();
 				break;
 			case 'Configs:reset':
-				this.$reset();
+				this.$reset().then(aResponse);
 				break;
 
 			// content
@@ -141,16 +153,19 @@ Configs.prototype = {
 				if (this._promisedLoadResolver)
 					this._promisedLoadResolver(aMessage.values);
 				delete this._promisedLoadResolver;
+				aResponse();
 				break;
 			case 'Configs:updated':
 				this.$lastValues[aMessage.key] = aMessage.value;
 				this.$notifyToObservers(aMessage.key);
+				aResponse();
 				break;
 			case 'Configs:reseted':
 				this.$applyValues(this.$default);
 				Object.keys(this.$default).forEach(function(aKey) {
 					this.$notifyToObservers(aKey);
 				}, this);
+				aResponse();
 				break;
 		}
 	},
@@ -182,16 +197,16 @@ Configs.prototype = {
 			promises.push(new Promise((function(aResolve, aReject) {
 				chrome.tabs.query({}, (function(aTabs) {
 					var promises = aTabs.map(function(aTab) {
-						return new Promise(function(aResolve, aReject) {
+						return new Promise((function(aResolve, aReject) {
 							chrome.tabs.sendMessage(
 								aTab.id,
 								aMessage,
 								null,
-								function() {
+								(function() {
 									aResolve();
-								}
+								}).bind(this)
 							);
-						});
+						}).bind(this));
 					}, this);
 					Promise.all(promises).then((function() {
 						aResolve();
@@ -206,7 +221,7 @@ Configs.prototype = {
 	},
 	$notifyLoaded : function()
 	{
-		this.$broadcast({
+		return this.$broadcast({
 			type   : 'Configs:loaded',
 			values : this.$lastValues
 		});
@@ -216,7 +231,7 @@ Configs.prototype = {
 		var value = this[aKey];
 		if (this.$shouldUseStorage) {
 			this.$log('broadcast updated config: ' + aKey + ' = ' + value);
-			this.$broadcast({
+			return this.$broadcast({
 				type  : 'Configs:updated',
 				key   : aKey,
 				value : value
@@ -224,16 +239,23 @@ Configs.prototype = {
 		}
 		else {
 			this.$log('request to store config: ' + aKey + ' = ' + value);
-			chrome.runtime.sendMessage({
+			return new Promise((function(aResolve, aReject) {
+				chrome.runtime.sendMessage(
+					{
 				type  : 'Configs:update',
 				key   : aKey,
 				value : value
-			});
+					},
+					function() {
+						aResolve();
+					}
+				);
+			}).bind(this));
 		}
 	},
 	$notifyLoaded : function()
 	{
-		this.$broadcast({
+		return this.$broadcast({
 			type   : 'Configs:loaded',
 			values : this.$lastValues
 		});
