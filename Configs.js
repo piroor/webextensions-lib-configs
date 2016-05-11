@@ -120,23 +120,20 @@ Configs.prototype = {
 	$onMessage : function(aMessage)
 	{
 		this.$log('onMessage: ' + aMessage.type);
+		if (this.$broadcasting)
+			return;
+
 		switch (aMessage.type)
 		{
 			// background
 			case 'Configs:load':
-				if (!this.$broadcasting) {
 					this.$load().then(this.$notifyLoaded.bind(this));
-				}
 				break;
 			case 'Configs:update':
-				if (!this.$broadcasting) {
 					this[aMessage.key] = aMessage.value;
-				}
 				break;
 			case 'Configs:reset':
-				if (!this.$broadcasting) {
 					this.$reset();
-				}
 				break;
 
 			// content
@@ -169,9 +166,20 @@ Configs.prototype = {
 
 	$broadcast : function(aMessage)
 	{
-		if (!chrome.tabs)
-			return;
 		this.$broadcasting = true;
+
+		var promises = [];
+
+		if (chrome.runtime) {
+			promises.push(new Promsie(function(aResolve, aReject) {
+				chrome.runtime.sendMessage(aMessage, function() {
+					aResolve();
+				});
+			}));
+		}
+
+		if (chrome.tabs) {
+			promises.push(new Promsie(function(aResolve, aReject) {
 		chrome.tabs.query({}, (function(aTabs) {
 			var promises = aTabs.map(function(aTab) {
 				return new Promise(function(aResolve, aReject) {
@@ -185,9 +193,15 @@ Configs.prototype = {
 					);
 				});
 			}, this);
-			Promise.all(promises).then((function() {
-				this.$broadcasting = false;
-			}).bind(this));
+					Promise.all(promises).then((function() {
+						aResolve();
+					}).bind(this));
+		}).bind(this));
+			}));
+		}
+
+		return Promise.all(promises).then((function() {
+			this.$broadcasting = false;
 		}).bind(this));
 	},
 	$notifyLoaded : function()
