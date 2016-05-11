@@ -171,7 +171,7 @@ Configs.prototype = {
 		var promises = [];
 
 		if (chrome.runtime) {
-			promises.push(new Promsie(function(aResolve, aReject) {
+			promises.push(new Promise(function(aResolve, aReject) {
 				chrome.runtime.sendMessage(aMessage, function() {
 					aResolve();
 				});
@@ -179,7 +179,7 @@ Configs.prototype = {
 		}
 
 		if (chrome.tabs) {
-			promises.push(new Promsie(function(aResolve, aReject) {
+			promises.push(new Promise(function(aResolve, aReject) {
 				chrome.tabs.query({}, (function(aTabs) {
 					var promises = aTabs.map(function(aTab) {
 						return new Promise(function(aResolve, aReject) {
