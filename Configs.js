@@ -171,15 +171,15 @@ Configs.prototype = {
 		var promises = [];
 
 		if (chrome.runtime) {
-			promises.push(new Promise(function(aResolve, aReject) {
-				chrome.runtime.sendMessage(aMessage, function() {
+			promises.push(new Promise((function(aResolve, aReject) {
+				chrome.runtime.sendMessage(aMessage, (function() {
 					aResolve();
-				});
-			}));
+				}).bind(this));
+			}).bind(this)));
 		}
 
 		if (chrome.tabs) {
-			promises.push(new Promise(function(aResolve, aReject) {
+			promises.push(new Promise((function(aResolve, aReject) {
 				chrome.tabs.query({}, (function(aTabs) {
 					var promises = aTabs.map(function(aTab) {
 						return new Promise(function(aResolve, aReject) {
@@ -197,7 +197,7 @@ Configs.prototype = {
 						aResolve();
 					}).bind(this));
 				}).bind(this));
-			}));
+			}).bind(this)));
 		}
 
 		return Promise.all(promises).then((function() {
