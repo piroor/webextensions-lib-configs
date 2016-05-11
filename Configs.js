@@ -41,7 +41,8 @@ Configs.prototype = {
 
 	get $shouldUseStorage()
 	{
-		return typeof chrome.storage !== 'undefined';
+		return typeof chrome.storage !== 'undefined' &&
+				location.protocol === 'moz-extension:';
 	},
 
 	$log : function(aMessage, ...aArgs)
