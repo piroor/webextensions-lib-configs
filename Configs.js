@@ -70,7 +70,7 @@ Configs.prototype = {
 			return this._promisedLoad = new Promise((function(aResolve, aReject) {
 				try {
 					chrome.storage.local.get(this.$default, (function(aValues) {
-						this.$log('load: loaded', aValues);
+						this.$log('load: loaded for ' + location.origin, aValues);
 						this.$applyValues(aValues);
 						this.$notifyLoaded();
 						aResolve();
