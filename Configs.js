@@ -22,7 +22,7 @@ Configs.prototype = {
 			return new Promise((function(aResolve, aReject) {
 				chrome.runtime.sendMessage(
 					{
-				type : 'Configs:reset'
+						type : 'Configs:reset'
 					},
 					function() {
 						aResolve();
@@ -242,9 +242,9 @@ Configs.prototype = {
 			return new Promise((function(aResolve, aReject) {
 				chrome.runtime.sendMessage(
 					{
-				type  : 'Configs:update',
-				key   : aKey,
-				value : value
+						type  : 'Configs:update',
+						key   : aKey,
+						value : value
 					},
 					function() {
 						aResolve();
