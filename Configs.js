@@ -81,7 +81,6 @@ Configs.prototype = {
 					chrome.storage.local.get(this.$default, (function(aValues) {
 						this.$log('load: loaded for ' + location.origin, aValues);
 						this.$applyValues(aValues);
-						this.$notifyLoaded();
 						aResolve(aValues);
 					}).bind(this));
 				}
@@ -148,10 +147,7 @@ Configs.prototype = {
 			case 'Configs:load':
 				this.$load()
 					.then((function(aValeus) {
-						return this.$notifyLoaded()
-								.then(function() {
-									aResponse(aValues);
-								});
+						return aResponse(aValues);
 					}).bind(this));
 				break;
 			case 'Configs:update':
@@ -163,12 +159,6 @@ Configs.prototype = {
 				break;
 
 			// content
-			case 'Configs:loaded':
-				if (this._promisedLoadResolver)
-					this._promisedLoadResolver(aMessage.values);
-				delete this._promisedLoadResolver;
-				aResponse();
-				break;
 			case 'Configs:updated':
 				this.$lastValues[aMessage.key] = aMessage.value;
 				this.$notifyToObservers(aMessage.key);
@@ -233,13 +223,6 @@ Configs.prototype = {
 			this.$broadcasting = false;
 		}).bind(this));
 	},
-	$notifyLoaded : function()
-	{
-		return this.$broadcast({
-			type   : 'Configs:loaded',
-			values : this.$lastValues
-		});
-	},
 	$notifyUpdated : function(aKey)
 	{
 		var value = this[aKey];
@@ -266,13 +249,6 @@ Configs.prototype = {
 				);
 			}).bind(this));
 		}
-	},
-	$notifyLoaded : function()
-	{
-		return this.$broadcast({
-			type   : 'Configs:loaded',
-			values : this.$lastValues
-		});
 	},
 	$notifyToObservers : function(aKey)
 	{
