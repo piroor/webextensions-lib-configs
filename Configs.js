@@ -131,11 +131,6 @@ Configs.prototype = {
 	$onMessage : function(aMessage, aSender, aRespond)
 	{
 		this.$log('onMessage: ' + aMessage.type, aSender);
-		if (this.$broadcasting) {
-			aResponse();
-			return;
-		}
-
 		switch (aMessage.type)
 		{
 			// background
@@ -178,15 +173,13 @@ Configs.prototype = {
 
 	$broadcast : function(aMessage)
 	{
-		this.$broadcasting = true;
-
 		var promises = [];
 
 		if (chrome.runtime) {
 			promises.push(new Promise((function(aResolve, aReject) {
-				chrome.runtime.sendMessage(aMessage, (function() {
-					aResolve();
-				}).bind(this));
+				chrome.runtime.sendMessage(aMessage, function(aResult) {
+					aResolve([aResult]);
+				});
 			}).bind(this)));
 		}
 
@@ -199,22 +192,22 @@ Configs.prototype = {
 								aTab.id,
 								aMessage,
 								null,
-								(function() {
-									aResolve();
-								}).bind(this)
+								aResolve
 							);
 						}).bind(this));
 					}, this);
-					Promise.all(promises).then((function() {
-						aResolve();
-					}).bind(this));
+					Promise.all(promises).then(aResolve);
 				}).bind(this));
 			}).bind(this)));
 		}
 
-		return Promise.all(promises).then((function() {
-			this.$broadcasting = false;
-		}).bind(this));
+		return Promise.all(promises).then(function(aResultSets) {
+			var flattenResults = [];
+			aResultSets.forEach(function(aResults) {
+				flattenResults = flattenResults.concat(aResults);
+			});
+			return flattenResults;
+		});
 	},
 	$notifyUpdated : function(aKey)
 	{
