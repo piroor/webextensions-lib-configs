@@ -82,7 +82,7 @@ Configs.prototype = {
 						this.$log('load: loaded for ' + location.origin, aValues);
 						this.$applyValues(aValues);
 						this.$notifyLoaded();
-						aResolve();
+						aResolve(aValues);
 					}).bind(this));
 				}
 				catch(e) {
@@ -99,14 +99,15 @@ Configs.prototype = {
 				.then((function(aValues) {
 					this.$log('load: promise resolved');
 					this.$applyValues(aValues);
+					return aValues;
 				}).bind(this));
 			chrome.runtime.sendMessage(
 				{
 					type : 'Configs:load'
 				},
-				(function() {
+				(function(aValues) {
 					if (this._promisedLoadResolver)
-						this._promisedLoadResolver();
+						this._promisedLoadResolver(aValues);
 					delete this._promisedLoadResolver;
 				}).bind(this)
 			);
@@ -146,8 +147,12 @@ Configs.prototype = {
 			// background
 			case 'Configs:load':
 				this.$load()
-					.then(this.$notifyLoaded.bind(this))
-					.then(aResponse);
+					.then((function(aValeus) {
+						return this.$notifyLoaded()
+								.then(function() {
+									aResponse(aValues);
+								});
+					}).bind(this));
 				break;
 			case 'Configs:update':
 				this[aMessage.key] = aMessage.value;
