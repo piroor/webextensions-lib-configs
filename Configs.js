@@ -65,8 +65,10 @@ Configs.prototype = {
 	$load : function()
 	{
 		this.$log('load');
-		if (this._promisedLoad)
+		if (this._promisedLoad) {
+			this.$log(' => already loaded');
 			return this._promisedLoad;
+		}
 
 		this.$applyValues(this.$default);
 		chrome.runtime.onMessage.addListener(this.$onMessage.bind(this));
@@ -98,9 +100,16 @@ Configs.prototype = {
 					this.$log('load: promise resolved');
 					this.$applyValues(aValues);
 				}).bind(this));
-			chrome.runtime.sendMessage({
-				type : 'Configs:load'
-			});
+			chrome.runtime.sendMessage(
+				{
+					type : 'Configs:load'
+				},
+				(function() {
+					if (this._promisedLoadResolver)
+						this._promisedLoadResolver();
+					delete this._promisedLoadResolver;
+				}).bind(this)
+			);
 			return this._promisedLoad;
 		}
 	},
