@@ -126,7 +126,7 @@ Configs.prototype = {
 		}, this);
 	},
 
-	$onMessage : function(aMessage, aSender, aResponse)
+	$onMessage : function(aMessage, aSender, aRespond)
 	{
 		this.$log('onMessage: ' + aMessage.type, aSender);
 		if (this.$broadcasting) {
@@ -139,30 +139,28 @@ Configs.prototype = {
 			// background
 			case 'Configs:load':
 				this.$load()
-					.then((function(aValeus) {
-						return aResponse(aValues);
-					}).bind(this));
-				break;
+					.then(aRespond);
+				return true;
 			case 'Configs:update':
 				this[aMessage.key] = aMessage.value;
-				aResponse();
+				aRespond();
 				break;
 			case 'Configs:reset':
-				this.$reset().then(aResponse);
-				break;
+				this.$reset().then(aRespond);
+				return true;
 
 			// content
 			case 'Configs:updated':
 				this.$lastValues[aMessage.key] = aMessage.value;
 				this.$notifyToObservers(aMessage.key);
-				aResponse();
+				aRespond();
 				break;
 			case 'Configs:reseted':
 				this.$applyValues(this.$default);
 				Object.keys(this.$default).forEach(function(aKey) {
 					this.$notifyToObservers(aKey);
 				}, this);
-				aResponse();
+				aRespond();
 				break;
 		}
 	},
