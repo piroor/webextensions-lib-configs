@@ -92,25 +92,18 @@ Configs.prototype = {
 		}
 		else { // content mode
 			this.$log('load: initialize promise on  ' + location.href);
-			this._promisedLoad = new Promise((function(aResolve, aReject) {
-				this._promisedLoadResolver = aResolve;
-			}).bind(this))
-				.then((function(aValues) {
-					this.$log('load: promise resolved');
-					this.$applyValues(aValues);
-					return aValues;
-				}).bind(this));
-			chrome.runtime.sendMessage(
-				{
-					type : 'Configs:load'
-				},
-				(function(aValues) {
-					if (this._promisedLoadResolver)
-						this._promisedLoadResolver(aValues);
-					delete this._promisedLoadResolver;
-				}).bind(this)
-			);
-			return this._promisedLoad;
+			return this._promisedLoad = new Promise((function(aResolve, aReject) {
+				chrome.runtime.sendMessage(
+					{
+						type : 'Configs:load'
+					},
+					(function(aValues) {
+						this.$log('load: promise resolved');
+						this.$applyValues(aValues);
+						aResolve(aValues);
+					}).bind(this)
+				);
+			}).bind(this));
 		}
 	},
 	$applyValues : function(aValues)
