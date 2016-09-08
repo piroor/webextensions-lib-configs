@@ -65,9 +65,13 @@ Configs.prototype = {
 	$load : function()
 	{
 		this.$log('load');
-		if (this._promisedLoad) {
+		if ('_promisedLoad' in this) {
+			if (this._promisedLoad) {
+				this.$log(' => waiting to be loaded');
+				return this._promisedLoad;
+			}
 			this.$log(' => already loaded');
-			return this._promisedLoad;
+			return Promise.resolve(this.$lastValues);
 		}
 
 		this.$applyValues(this.$default);
@@ -82,6 +86,7 @@ Configs.prototype = {
 						aValues = aValues || this.$default;
 						this.$log('load: loaded for ' + location.origin, aValues);
 						this.$applyValues(aValues);
+						this._promisedLoad = null;
 						aResolve(aValues);
 					}).bind(this));
 				}
@@ -102,6 +107,7 @@ Configs.prototype = {
 						aValues = aValues || this.$default;
 						this.$log('load: responded', aValues);
 						this.$applyValues(aValues);
+						this._promisedLoad = null;
 						aResolve(aValues);
 					}).bind(this)
 				);
