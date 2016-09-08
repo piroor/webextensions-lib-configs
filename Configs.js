@@ -130,7 +130,7 @@ Configs.prototype = {
 
 	$onMessage : function(aMessage, aSender, aRespond)
 	{
-		this.$log('onMessage: ' + aMessage.type, aSender);
+		this.$log('onMessage: ' + aMessage.type, aMessage, aSender);
 		switch (aMessage.type)
 		{
 			// background
