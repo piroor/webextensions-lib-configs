@@ -214,6 +214,16 @@ Configs.prototype = {
 		var value = this[aKey];
 		if (this.$shouldUseStorage) {
 			this.$log('broadcast updated config: ' + aKey + ' = ' + value);
+			try {
+				let updatedKey = {};
+				updatedKey[aKey] = value;
+				chrome.storage.local.set(updatedKey, (function() {
+					this.$log('successfully saved', updatedKey);
+				}).bind(this));
+			}
+			catch(e) {
+				this.$log('save: failed', e);
+			}
 			return this.$broadcast({
 				type  : 'Configs:updated',
 				key   : aKey,
