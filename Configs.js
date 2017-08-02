@@ -6,6 +6,7 @@
 
 function Configs(aDefaults) {
 	this.$default = aDefaults;
+	this.$locked = {};
 	this.$lastValues = {};
 	this.$loaded = this.$load();
 }
@@ -88,6 +89,16 @@ Configs.prototype = {
 						this.$applyValues(aValues);
 						this._promisedLoad = null;
 						aResolve(aValues);
+						chrome.runtime.sendMessage( // copy locked state from others
+							{ type : 'Configs:load' },
+							(aResult) => {
+								this.$log('load: responded from others', aResult);
+								this.$locked = aResult.lockedKeys;
+								Object.keys(this.$default).forEach((aKey) => {
+									this.$notifyToObservers(aKey);
+								});
+							}
+						);
 					}).bind(this));
 				}
 				catch(e) {
@@ -103,12 +114,13 @@ Configs.prototype = {
 					{
 						type : 'Configs:load'
 					},
-					(function(aValues) {
-						aValues = aValues || this.$default;
-						this.$log('load: responded', aValues);
-						this.$applyValues(aValues);
+					(function(aResult) {
+						this.$log('load: responded', aResult);
+						var values = aResult.values || this.$default;
+						this.$applyValues(values);
+						this.$locked = aResult.lockedKeys;
 						this._promisedLoad = null;
-						aResolve(aValues);
+						aResolve(values);
 					}).bind(this)
 				);
 			}).bind(this));
@@ -117,6 +129,8 @@ Configs.prototype = {
 	$applyValues : function(aValues)
 	{
 		Object.keys(aValues).forEach(function(aKey) {
+			if (aKey in this.$locked)
+				return;
 			this.$lastValues[aKey] = aValues[aKey];
 			if (aKey in this)
 				return;
@@ -125,6 +139,10 @@ Configs.prototype = {
 					return this.$lastValues[aKey];
 				}).bind(this),
 				set: (function(aValue) {
+					if (aKey in this.$locked) {
+						this.$log('warning: ' + aKey + ' is locked and not updated');
+						return aValue;
+					}
 					this.$log('set: ' + aKey + ' = ' + aValue);
 					this.$lastValues[aKey] = aValue;
 					this.$notifyUpdated(aKey);
@@ -132,6 +150,29 @@ Configs.prototype = {
 				}).bind(this)
 			});
 		}, this);
+	},
+
+	$lock : function(aKey)
+	{
+		this.$log('locking: ' + aKey);
+		this.$updateLocked(aKey, true);
+		this.$notifyUpdated(aKey);
+	},
+
+	$unlock : function(aKey)
+	{
+		this.$log('unlocking: ' + aKey);
+		this.$updateLocked(aKey, false);
+		this.$notifyUpdated(aKey);
+	},
+
+	$updateLocked : function(aKey, aLocked)
+	{
+		if (aLocked) {
+			this.$locked[aKey] = true;
+		} else {
+			delete this.$locked[aKey];
+		}
 	},
 
 	$onMessage : function(aMessage, aSender, aRespond)
@@ -142,9 +183,15 @@ Configs.prototype = {
 			// background
 			case 'Configs:load':
 				this.$load()
-					.then(aRespond);
+					.then((aValues) => {
+						aRespond({
+							values     : aValues,
+							lockedKeys : this.$locked
+						});
+					});
 				return true;
 			case 'Configs:update':
+				this.$updateLocked(aMessage.key, aMessage.locked);
 				this[aMessage.key] = aMessage.value;
 				aRespond();
 				break;
@@ -154,6 +201,7 @@ Configs.prototype = {
 
 			// content
 			case 'Configs:updated':
+				this.$updateLocked(aMessage.key, aMessage.locked);
 				this.$lastValues[aMessage.key] = aMessage.value;
 				this.$notifyToObservers(aMessage.key);
 				aRespond();
@@ -218,8 +266,9 @@ Configs.prototype = {
 	$notifyUpdated : function(aKey)
 	{
 		var value = this[aKey];
+		var locked = aKey in this.$locked;
 		if (this.$shouldUseStorage) {
-			this.$log('broadcast updated config: ' + aKey + ' = ' + value);
+			this.$log('broadcast updated config: ' + aKey + ' = ' + value + ' (locked: ' + locked + ')');
 			try {
 				let updatedKey = {};
 				updatedKey[aKey] = value;
@@ -233,17 +282,19 @@ Configs.prototype = {
 			return this.$broadcast({
 				type  : 'Configs:updated',
 				key   : aKey,
-				value : value
+				value : value,
+				locked : locked
 			});
 		}
 		else {
-			this.$log('request to store config: ' + aKey + ' = ' + value);
+			this.$log('request to store config: ' + aKey + ' = ' + value + ' (locked: ' + locked + ')');
 			return new Promise((function(aResolve, aReject) {
 				chrome.runtime.sendMessage(
 					{
 						type  : 'Configs:update',
 						key   : aKey,
-						value : value
+						value : value,
+						locked : locked
 					},
 					function() {
 						aResolve();
