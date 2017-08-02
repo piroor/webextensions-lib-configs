@@ -1,5 +1,5 @@
 /*
- license: The MIT License, Copyright (c) 2016 YUKI "Piro" Hiroshi
+ license: The MIT License, Copyright (c) 2016-2017 YUKI "Piro" Hiroshi
  original:
    http://github.com/piroor/webextensions-lib-configs
 */
