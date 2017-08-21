@@ -93,7 +93,7 @@ Configs.prototype = {
 							{ type : 'Configs:load' },
 							(aResult) => {
 								this.$log('load: responded from others', aResult);
-								this.$locked = aResult.lockedKeys;
+								this.$locked = aResult && aResult.lockedKeys || {};
 								Object.keys(this.$default).forEach((aKey) => {
 									this.$notifyToObservers(aKey);
 								});
@@ -116,9 +116,9 @@ Configs.prototype = {
 					},
 					(function(aResult) {
 						this.$log('load: responded', aResult);
-						var values = aResult.values || this.$default;
+						var values = aResult && aResult.values || this.$default;
 						this.$applyValues(values);
-						this.$locked = aResult.lockedKeys;
+						this.$locked = aResult && aResult.lockedKeys || {};
 						this._promisedLoad = null;
 						aResolve(values);
 					}).bind(this)
