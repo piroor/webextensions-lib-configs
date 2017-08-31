@@ -140,7 +140,7 @@ Configs.prototype = {
   $onMessage : function(aMessage, aSender, aRespond) {
     if (!aMessage ||
         typeof aMessage.type != 'string' ||
-        aMessage.type.indexOf('Configs:'))
+        aMessage.type.indexOf('Configs:') != 0)
       return;
 
     this.$processMessage(aMessage, aSender).then(aRespond);
