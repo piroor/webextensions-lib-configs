@@ -23,7 +23,7 @@ Configs.prototype = {
     }
     else {
       return await browser.runtime.sendMessage({
-        type : 'Configs:reset'
+        type : 'Configs:request:reset'
       });
     }
   },
@@ -79,7 +79,7 @@ Configs.prototype = {
       else { // content mode
         this.$log('load: initialize promise on  ' + location.href);
         let response = await browser.runtime.sendMessage({
-              type : 'Configs:load'
+              type : 'Configs:request:load'
             });
         this.$log('load: responded', response);
         values = response && response.values || this.$default;
@@ -144,14 +144,14 @@ Configs.prototype = {
       return;
 
     this.$processMessage(aMessage, aSender).then(aRespond);
-    return true;
+    return aMessage.type.indexOf('Configs:request:') == 0;
   },
 
   $processMessage : async function(aMessage, aSender) {
     this.$log('onMessage: ' + aMessage.type, aMessage, aSender);
     switch (aMessage.type) {
       // background
-      case 'Configs:load': {
+      case 'Configs:request:load': {
         let values = await this.$load();
         return {
           values     : values,
@@ -164,7 +164,7 @@ Configs.prototype = {
         this[aMessage.key] = aMessage.value;
       }; break;
 
-      case 'Configs:reset': {
+      case 'Configs:request:reset': {
         return this.$reset();
       }; break;
 
