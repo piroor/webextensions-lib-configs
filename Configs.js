@@ -65,24 +65,15 @@ Configs.prototype = {
   $tryLoad : async function() {
     this.$log('load');
     this.$applyValues(this.$default);
+      browser.runtime.onMessage.addListener(this.$onMessage.bind(this));
     var values;
     try {
       if (this.$shouldUseStorage) { // background mode
         this.$log('load: try load from storage on  ' + location.href);
-        values = browser.storage.local.get(this.$default);
+        values = await browser.storage.local.get(this.$default);
         values = values || this.$default;
         this.$log('load: loaded for ' + location.origin, values);
         this.$applyValues(values);
-        browser.runtime.sendMessage( // copy locked state from others
-          { type : 'Configs:load' },
-          aResult => {
-            this.$log('load: responded from others', aResult);
-            this.$locked = aResult && aResult.lockedKeys || {};
-            Object.keys(this.$default).forEach(aKey => {
-              this.$notifyToObservers(aKey);
-            });
-          }
-        );
         browser.storage.onChanged.addListener(this.$onChanged.bind(this));
       }
       else { // content mode
@@ -95,7 +86,6 @@ Configs.prototype = {
         this.$applyValues(values);
         this.$locked = response && response.lockedKeys || {};
       }
-      browser.runtime.onMessage.addListener(this.$onMessage.bind(this));
       return values;
     }
     catch(e) {
@@ -147,12 +137,22 @@ Configs.prototype = {
     }
   },
 
-  $onMessage : async function(aMessage, aSender) {
+  $onMessage : function(aMessage, aSender, aRespond) {
+    if (!aMessage ||
+        typeof aMessage.type != 'string' ||
+        aMessage.type.indexOf('Configs:'))
+      return;
+
+    this.$processMessage.then(aRespond);
+    return true;
+  },
+
+  $processMessage : async function(aMessage, aSender) {
     this.$log('onMessage: ' + aMessage.type, aMessage, aSender);
     switch (aMessage.type) {
       // background
       case 'Configs:load': {
-        let values = this.$load()
+        let values = await this.$load();
         return {
           values     : values,
           lockedKeys : this.$locked
