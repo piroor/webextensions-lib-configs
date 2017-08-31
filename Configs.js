@@ -143,7 +143,7 @@ Configs.prototype = {
         aMessage.type.indexOf('Configs:'))
       return;
 
-    this.$processMessage.then(aRespond);
+    this.$processMessage(aMessage, aSender).then(aRespond);
     return true;
   },
 
