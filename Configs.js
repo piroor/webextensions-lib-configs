@@ -4,15 +4,17 @@
    http://github.com/piroor/webextensions-lib-configs
 */
 
+'use strict';
+
 function Configs(aDefaults) {
   this.$default = aDefaults;
+  this.$logging = false;
   this.$locked = {};
   this.$lastValues = {};
   this.$loaded = this.$load();
 }
 Configs.prototype = {
-  $reset : function()
-  {
+  $reset : async function() {
     this.$applyValues(this.$default);
     if (this.$shouldUseStorage) {
       return this.$broadcast({
@@ -20,41 +22,33 @@ Configs.prototype = {
       });
     }
     else {
-      return new Promise((function(aResolve, aReject) {
-        chrome.runtime.sendMessage(
-          {
-            type : 'Configs:reset'
-          },
-          function() {
-            aResolve();
-          }
-        );
-      }).bind(this));
+      return await browser.runtime.sendMessage({
+        type : 'Configs:reset'
+      });
     }
   },
 
-  $addObserver : function(aObserver)
-  {
+  $addObserver : function(aObserver) {
     var index = this.$observers.indexOf(aObserver);
     if (index < 0)
       this.$observers.push(aObserver);
   },
-  $removeObserver : function(aObserver)
-  {
+  $removeObserver : function(aObserver) {
     var index = this.$observers.indexOf(aObserver);
     if (index > -1)
       this.$observers.splice(index, 1);
   },
   $observers : [],
 
-  get $shouldUseStorage()
-  {
-    return typeof chrome.storage !== 'undefined' &&
-        location.protocol === 'moz-extension:';
+  get $shouldUseStorage() {
+    return typeof browser.storage !== 'undefined' &&
+             location.protocol === 'moz-extension:';
   },
 
-  $log : function(aMessage, ...aArgs)
-  {return;
+  $log : function(aMessage, ...aArgs) {
+    if (!this.$logging)
+      return;
+
     var type = this.$shouldUseStorage ? 'storage' : 'bridge' ;
     aMessage = 'Configs[' + type + '] ' + aMessage;
     if (typeof log === 'function')
@@ -63,82 +57,62 @@ Configs.prototype = {
       console.log(aMessage, ...aArgs);
   },
 
-  $load : function()
-  {
+  $load : function() {
+    return this.$_promisedLoad ||
+             (this.$_promisedLoad = this.$tryLoad());
+  },
+
+  $tryLoad : async function() {
     this.$log('load');
-    if ('_promisedLoad' in this) {
-      if (this._promisedLoad) {
-        this.$log(' => waiting to be loaded');
-        return this._promisedLoad;
-      }
-      this.$log(' => already loaded');
-      return Promise.resolve(this.$lastValues);
-    }
-
     this.$applyValues(this.$default);
-    chrome.runtime.onMessage.addListener(this.$onMessage.bind(this));
-
-    if (this.$shouldUseStorage) { // background mode
-      this.$log('load: try load from storage on  ' + location.href);
-      chrome.storage.onChanged.addListener(this.$onChanged.bind(this));
-      return this._promisedLoad = new Promise((function(aResolve, aReject) {
-        try {
-          chrome.storage.local.get(this.$default, (function(aValues) {
-            aValues = aValues || this.$default;
-            this.$log('load: loaded for ' + location.origin, aValues);
-            this.$applyValues(aValues);
-            this._promisedLoad = null;
-            aResolve(aValues);
-            chrome.runtime.sendMessage( // copy locked state from others
-              { type : 'Configs:load' },
-              (aResult) => {
-                this.$log('load: responded from others', aResult);
-                this.$locked = aResult && aResult.lockedKeys || {};
-                Object.keys(this.$default).forEach((aKey) => {
-                  this.$notifyToObservers(aKey);
-                });
-              }
-            );
-          }).bind(this));
-        }
-        catch(e) {
-          this.$log('load: failed', e);
-          aReject(e);
-        }
-      }).bind(this));
-    }
-    else { // content mode
-      this.$log('load: initialize promise on  ' + location.href);
-      return this._promisedLoad = new Promise((function(aResolve, aReject) {
-        chrome.runtime.sendMessage(
-          {
-            type : 'Configs:load'
-          },
-          (function(aResult) {
-            this.$log('load: responded', aResult);
-            var values = aResult && aResult.values || this.$default;
-            this.$applyValues(values);
+    var values;
+    try {
+      if (this.$shouldUseStorage) { // background mode
+        this.$log('load: try load from storage on  ' + location.href);
+        values = browser.storage.local.get(this.$default);
+        values = values || this.$default;
+        this.$log('load: loaded for ' + location.origin, values);
+        this.$applyValues(values);
+        browser.runtime.sendMessage( // copy locked state from others
+          { type : 'Configs:load' },
+          aResult => {
+            this.$log('load: responded from others', aResult);
             this.$locked = aResult && aResult.lockedKeys || {};
-            this._promisedLoad = null;
-            aResolve(values);
-          }).bind(this)
+            Object.keys(this.$default).forEach(aKey => {
+              this.$notifyToObservers(aKey);
+            });
+          }
         );
-      }).bind(this));
+        browser.storage.onChanged.addListener(this.$onChanged.bind(this));
+      }
+      else { // content mode
+        this.$log('load: initialize promise on  ' + location.href);
+        let response = await browser.runtime.sendMessage({
+              type : 'Configs:load'
+            });
+        this.$log('load: responded', response);
+        values = response && response.values || this.$default;
+        this.$applyValues(values);
+        this.$locked = response && response.lockedKeys || {};
+      }
+      browser.runtime.onMessage.addListener(this.$onMessage.bind(this));
+      return values;
+    }
+    catch(e) {
+      this.$log('load: failed', e, e.stack);
+      throw e;
     }
   },
-  $applyValues : function(aValues)
-  {
-    Object.keys(aValues).forEach(function(aKey) {
+  $applyValues : function(aValues) {
+    Object.keys(aValues).forEach(aKey => {
       if (aKey in this.$locked)
         return;
       this.$lastValues[aKey] = aValues[aKey];
       if (aKey in this)
         return;
       Object.defineProperty(this, aKey, {
-        get: (function() {
-          return this.$lastValues[aKey];
-        }).bind(this),
-        set: (function(aValue) {
+        get: () => this.$lastValues[aKey],
+        set: (aValue) => {
           if (aKey in this.$locked) {
             this.$log('warning: ' + aKey + ' is locked and not updated');
             return aValue;
@@ -147,124 +121,92 @@ Configs.prototype = {
           this.$lastValues[aKey] = aValue;
           this.$notifyUpdated(aKey);
           return aValue;
-        }).bind(this)
+        }
       });
-    }, this);
+    });
   },
 
-  $lock : function(aKey)
-  {
+  $lock : function(aKey) {
     this.$log('locking: ' + aKey);
     this.$updateLocked(aKey, true);
     this.$notifyUpdated(aKey);
   },
 
-  $unlock : function(aKey)
-  {
+  $unlock : function(aKey) {
     this.$log('unlocking: ' + aKey);
     this.$updateLocked(aKey, false);
     this.$notifyUpdated(aKey);
   },
 
-  $updateLocked : function(aKey, aLocked)
-  {
+  $updateLocked : function(aKey, aLocked) {
     if (aLocked) {
       this.$locked[aKey] = true;
-    } else {
+    }
+    else {
       delete this.$locked[aKey];
     }
   },
 
-  $onMessage : function(aMessage, aSender, aRespond)
-  {
+  $onMessage : async function(aMessage, aSender) {
     this.$log('onMessage: ' + aMessage.type, aMessage, aSender);
-    switch (aMessage.type)
-    {
+    switch (aMessage.type) {
       // background
-      case 'Configs:load':
-        this.$load()
-          .then((aValues) => {
-            aRespond({
-              values     : aValues,
-              lockedKeys : this.$locked
-            });
-          });
-        return true;
-      case 'Configs:update':
+      case 'Configs:load': {
+        let values = this.$load()
+        return {
+          values     : values,
+          lockedKeys : this.$locked
+        };
+      }; break;
+
+      case 'Configs:update': {
         this.$updateLocked(aMessage.key, aMessage.locked);
         this[aMessage.key] = aMessage.value;
-        aRespond();
-        break;
-      case 'Configs:reset':
-        this.$reset().then(aRespond);
-        return true;
+      }; break;
+
+      case 'Configs:reset': {
+        return this.$reset();
+      }; break;
+
 
       // content
-      case 'Configs:updated':
+      case 'Configs:updated': {
         this.$updateLocked(aMessage.key, aMessage.locked);
         this.$lastValues[aMessage.key] = aMessage.value;
         this.$notifyToObservers(aMessage.key);
-        aRespond();
-        break;
-      case 'Configs:reseted':
+      }; break;
+
+      case 'Configs:reseted': {
         this.$applyValues(this.$default);
-        Object.keys(this.$default).forEach(function(aKey) {
+        Object.keys(this.$default).forEach(aKey => {
           this.$notifyToObservers(aKey);
-        }, this);
-        aRespond();
+        });
         break;
+      }
     }
   },
 
-  $onChanged : function(aChanges)
-  {
+  $onChanged : function(aChanges) {
     var changedKeys = Object.keys(aChanges);
-    changedKeys.forEach(function(aKey) {
+    changedKeys.forEach(aKey => {
       this.$lastValues[aKey] = aChanges[aKey].newValue;
       this.$notifyToObservers(aKey);
-    }, this);
-  },
-
-  $broadcast : function(aMessage)
-  {
-    var promises = [];
-
-    if (chrome.runtime) {
-      promises.push(new Promise((function(aResolve, aReject) {
-        chrome.runtime.sendMessage(aMessage, function(aResult) {
-          aResolve([aResult]);
-        });
-      }).bind(this)));
-    }
-
-    if (chrome.tabs) {
-      promises.push(new Promise((function(aResolve, aReject) {
-        chrome.tabs.query({}, (function(aTabs) {
-          var promises = aTabs.map(function(aTab) {
-            return new Promise((function(aResolve, aReject) {
-              chrome.tabs.sendMessage(
-                aTab.id,
-                aMessage,
-                null,
-                aResolve
-              );
-            }).bind(this));
-          }, this);
-          Promise.all(promises).then(aResolve);
-        }).bind(this));
-      }).bind(this)));
-    }
-
-    return Promise.all(promises).then(function(aResultSets) {
-      var flattenResults = [];
-      aResultSets.forEach(function(aResults) {
-        flattenResults = flattenResults.concat(aResults);
-      });
-      return flattenResults;
     });
   },
-  $notifyUpdated : function(aKey)
-  {
+
+  $broadcast : async function(aMessage) {
+    var promises = [];
+    if (browser.runtime) {
+      promises.push(await browser.runtime.sendMessage(aMessage));
+    }
+    if (browser.tabs) {
+      let tabs = browser.tabs.query({ windowTypes: ['normal'] });
+      promises = promises.concat(tabs.map(aTab =>
+                   browser.tabs.sendMessage(aTab.id, aMessage, null)));
+    }
+    return await Promise.all(promises);
+  },
+  $notifyUpdated : async function(aKey) {
     var value = this[aKey];
     var locked = aKey in this.$locked;
     if (this.$shouldUseStorage) {
@@ -272,9 +214,9 @@ Configs.prototype = {
       try {
         let updatedKey = {};
         updatedKey[aKey] = value;
-        chrome.storage.local.set(updatedKey, (function() {
+        browser.storage.local.set(updatedKey, () => {
           this.$log('successfully saved', updatedKey);
-        }).bind(this));
+        });
       }
       catch(e) {
         this.$log('save: failed', e);
@@ -288,28 +230,20 @@ Configs.prototype = {
     }
     else {
       this.$log('request to store config: ' + aKey + ' = ' + value + ' (locked: ' + locked + ')');
-      return new Promise((function(aResolve, aReject) {
-        chrome.runtime.sendMessage(
-          {
-            type  : 'Configs:update',
-            key   : aKey,
-            value : value,
-            locked : locked
-          },
-          function() {
-            aResolve();
-          }
-        );
-      }).bind(this));
+      return browser.runtime.sendMessage({
+         type  : 'Configs:update',
+         key   : aKey,
+         value : value,
+         locked : locked
+      });
     }
   },
-  $notifyToObservers : function(aKey)
-  {
-    this.$observers.forEach(function(aObserver) {
+  $notifyToObservers : function(aKey) {
+    this.$observers.forEach(aObserver => {
       if (typeof aObserver === 'function')
         aObserver(aKey);
       else if (aObserver && typeof aObserver.onChangeConfig === 'function')
         aObserver.onChangeConfig(aKey);
-    }, this);
+    });
   }
 };
