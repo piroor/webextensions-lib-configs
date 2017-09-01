@@ -51,7 +51,7 @@ Configs.prototype = {
 
     var type = this.$shouldUseStorage ? 'storage' : 'bridge' ;
     aMessage = `Configs[${type}] ${aMessage}`;
-    if (typeof log === 'function')
+    if (typeof window.log === 'function')
       log(aMessage, ...aArgs);
     else
       console.log(aMessage, ...aArgs);
