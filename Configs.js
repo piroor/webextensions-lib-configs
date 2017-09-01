@@ -50,7 +50,7 @@ Configs.prototype = {
       return;
 
     var type = this.$shouldUseStorage ? 'storage' : 'bridge' ;
-    aMessage = 'Configs[' + type + '] ' + aMessage;
+    aMessage = `Configs[${type}] ${aMessage}`;
     if (typeof log === 'function')
       log(aMessage, ...aArgs);
     else
@@ -69,10 +69,10 @@ Configs.prototype = {
     var values;
     try {
       if (this.$shouldUseStorage) { // background mode
-        this.$log('load: try load from storage on  ' + location.href);
+        this.$log(`load: try load from storage on  ${location.href}`);
         values = await browser.storage.local.get(this.$default);
         values = values || this.$default;
-        this.$log('load: loaded for ' + location.origin, values);
+        this.$log(`load: loaded for ${location.origin}`, values);
         this.$applyValues(values);
         browser.storage.onChanged.addListener(this.$onChanged.bind(this));
       }
@@ -104,10 +104,10 @@ Configs.prototype = {
         get: () => this.$lastValues[aKey],
         set: (aValue) => {
           if (aKey in this.$locked) {
-            this.$log('warning: ' + aKey + ' is locked and not updated');
+            this.$log(`warning: ${aKey} is locked and not updated`);
             return aValue;
           }
-          this.$log('set: ' + aKey + ' = ' + aValue);
+          this.$log(`set: ${aKey} = ${aValue}`);
           this.$lastValues[aKey] = aValue;
           this.$notifyUpdated(aKey);
           return aValue;
@@ -210,7 +210,7 @@ Configs.prototype = {
     var value = this[aKey];
     var locked = aKey in this.$locked;
     if (this.$shouldUseStorage) {
-      this.$log('broadcast updated config: ' + aKey + ' = ' + value + ' (locked: ' + locked + ')');
+      this.$log(`broadcast updated config: ${aKey} = ${value} (locked: ${locked})`);
       try {
         let updatedKey = {};
         updatedKey[aKey] = value;
@@ -229,7 +229,7 @@ Configs.prototype = {
       });
     }
     else {
-      this.$log('request to store config: ' + aKey + ' = ' + value + ' (locked: ' + locked + ')');
+      this.$log(`request to store config: ${aKey} = ${value} (locked: ${locked})`);
       return browser.runtime.sendMessage({
          type  : 'Configs:update',
          key   : aKey,
