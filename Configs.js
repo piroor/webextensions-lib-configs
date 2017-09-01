@@ -139,18 +139,37 @@ Configs.prototype = {
 
   $onMessage : function(aMessage, aSender, aRespond) {
     if (!aMessage ||
-        typeof aMessage.type != 'string' ||
-        aMessage.type.indexOf('Configs:') != 0)
+        typeof aMessage.type != 'string')
       return;
 
-    this.$processMessage(aMessage, aSender).then(aRespond);
-    return aMessage.type.indexOf('Configs:request:') == 0;
+    if ((this.$shouldUseStorage &&
+         (this.BACKEND_COMMANDS.indexOf(aMessage.type) < 0)) ||
+        (!this.$shouldUseStorage &&
+         (this.FRONTEND_COMMANDS.indexOf(aMessage.type) < 0)))
+      return;
+
+    if (aMessage.type.indexOf('Configs:request:') == 0) {
+      this.$processMessage(aMessage, aSender).then(aRespond);
+      return true;
+    }
+    else {
+      this.$processMessage(aMessage, aSender);
+    }
   },
 
+  BACKEND_COMMANDS: [
+    'Configs:request:load',
+    'Configs:update',
+    'Configs:request:reset'
+  ],
+  FRONTEND_COMMANDS: [
+    'Configs:updated',
+    'Configs:reseted',
+  ],
   $processMessage : async function(aMessage, aSender) {
-    this.$log('onMessage: ' + aMessage.type, aMessage, aSender);
+    this.$log(`onMessage: ${aMessage.type}`, aMessage, aSender);
     switch (aMessage.type) {
-      // background
+      // backend (background, sidebar)
       case 'Configs:request:load': {
         let values = await this.$load();
         return {
@@ -169,7 +188,7 @@ Configs.prototype = {
       }; break;
 
 
-      // content
+      // frontend (content, etc.)
       case 'Configs:updated': {
         this.$updateLocked(aMessage.key, aMessage.locked);
         this.$lastValues[aMessage.key] = aMessage.value;
