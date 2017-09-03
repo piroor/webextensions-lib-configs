@@ -219,7 +219,7 @@ Configs.prototype = {
       promises.push(await browser.runtime.sendMessage(aMessage));
     }
     if (browser.tabs) {
-      let tabs = browser.tabs.query({ windowType: 'normal' });
+      let tabs = await browser.tabs.query({ windowType: 'normal' });
       promises = promises.concat(tabs.map(aTab =>
                    browser.tabs.sendMessage(aTab.id, aMessage, null)));
     }
