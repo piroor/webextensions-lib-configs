@@ -74,6 +74,17 @@ Configs.prototype = {
         values = values || this.$default;
         this.$log(`load: loaded for ${location.origin}`, values);
         this.$applyValues(values);
+        if (browser.storage.managed) {
+          try {
+            let values = await browser.storage.managed.get();
+            Object.keys(values).map(aKey => {
+              this[aKey] = values[aKey];
+              this.$updateLocked(aKey, true);
+            });
+          }
+          catch(e) {
+          }
+        }
         browser.storage.onChanged.addListener(this.$onChanged.bind(this));
       }
       else { // content mode
