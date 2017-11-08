@@ -103,3 +103,6 @@ configs.enabled = configs.$default.enabled; // reset to default
 configs.$reset(); // reset all to default
 ```
 
+## Managed Storage
+
+This library supports `storage.managed`. Configuration items which have any value in `storage.managed` are  treated as locked configuration and they become unchangable. For more details, see the [API documentation](https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/storage/managed).
