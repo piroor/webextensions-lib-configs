@@ -106,3 +106,17 @@ configs.$reset(); // reset all to default
 ## Managed Storage
 
 This library supports `storage.managed`. Configuration items which have any value in `storage.managed` are  treated as locked configuration and they become unchangable. For more details, see the [API documentation](https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/storage/managed).
+
+## Sync Storage
+
+This library supports [storage.sync](https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/storage/sync). To sync configurations, set `$syncKeys` to an array of the key names that should be synced:
+
+```javascript
+var configs = new Configs({
+  enabled: true,
+  advanced: false,
+  attributes: 'alt|title'
+}, {
+  syncKeys: ['enabled', 'attributes']
+});
+```
