@@ -6,12 +6,12 @@
 
 'use strict';
 
-function Configs(aDefaults, args = {syncKeys: []}) {
+function Configs(aDefaults, aOptions = { syncKeys: [] }) {
   this.$default = aDefaults;
   this.$logging = false;
   this.$locked = {};
   this.$lastValues = {};
-  this.$syncKeys = args.syncKeys || [];
+  this.$syncKeys = aOptions.syncKeys || [];
   this.$loaded = this.$load();
 }
 Configs.prototype = {
