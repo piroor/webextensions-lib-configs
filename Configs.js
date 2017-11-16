@@ -6,12 +6,13 @@
 
 'use strict';
 
-function Configs(aDefaults) {
+function Configs(aDefaults, args = {syncKeys: []}) {
   this.$default = aDefaults;
   this.$logging = false;
   this.$locked = {};
   this.$lastValues = {};
   this.$loaded = this.$load();
+  this.$syncKeys = args.syncKeys || [];
 }
 Configs.prototype = {
   $reset : async function() {
@@ -72,6 +73,11 @@ Configs.prototype = {
         this.$log(`load: try load from storage on  ${location.href}`);
         values = await browser.storage.local.get(this.$default);
         values = values || this.$default;
+        if (this.$syncKeys && this.$syncKeys.length) {
+          let syncedValues = await browser.storage.sync.get(this.$syncKeys);
+          this.$log(`load: loaded from sync for ${location.origin}`, syncedValues);
+          values = Object.assign(values, syncedValues);
+        }
         this.$log(`load: loaded for ${location.origin}`, values);
         this.$applyValues(values);
         if (browser.storage.managed) {
@@ -241,15 +247,25 @@ Configs.prototype = {
     var locked = aKey in this.$locked;
     if (this.$shouldUseStorage) {
       this.$log(`broadcast updated config: ${aKey} = ${value} (locked: ${locked})`);
+      let updatedKey = {};
+      updatedKey[aKey] = value;
       try {
-        let updatedKey = {};
-        updatedKey[aKey] = value;
         browser.storage.local.set(updatedKey, () => {
           this.$log('successfully saved', updatedKey);
         });
       }
       catch(e) {
         this.$log('save: failed', e);
+      }
+      try {
+        if (this.$syncKeys.includes(aKey)) {
+          browser.storage.sync.set(updatedKey, () => {
+            this.$log('successfully synced', updatedKey);
+          });
+        }
+      }
+      catch(e) {
+        this.$log('sync: failed', e);
       }
       return this.$broadcast({
         type  : 'Configs:updated',
