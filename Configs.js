@@ -11,8 +11,8 @@ function Configs(aDefaults, args = {syncKeys: []}) {
   this.$logging = false;
   this.$locked = {};
   this.$lastValues = {};
-  this.$loaded = this.$load();
   this.$syncKeys = args.syncKeys || [];
+  this.$loaded = this.$load();
 }
 Configs.prototype = {
   $reset : async function() {
