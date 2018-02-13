@@ -11,7 +11,9 @@ function Configs(aDefaults, aOptions = { syncKeys: [] }) {
   this.$logging = false;
   this.$locked = {};
   this.$lastValues = {};
-  this.$syncKeys = aOptions.syncKeys || [];
+  this.$syncKeys = aOptions.localKeys ? 
+    Object.keys(aDefaults).filter(x => !aOptions.localKeys.includes(x)) : 
+    (aOptions.syncKeys || []);
   this.$loaded = this.$load();
 }
 Configs.prototype = {
