@@ -109,7 +109,7 @@ This library supports `storage.managed`. Configuration items which have any valu
 
 ## Sync Storage
 
-This library supports [storage.sync](https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/storage/sync). To sync configurations, set `$syncKeys` to an array of the key names that should be synced:
+This library supports [storage.sync](https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/storage/sync). To use it, set `syncKeys` in the optional second parameter of the `Configs` constructor to an array of the key names that should be synced:
 
 ```javascript
 var configs = new Configs({
@@ -118,5 +118,17 @@ var configs = new Configs({
   attributes: 'alt|title'
 }, {
   syncKeys: ['enabled', 'attributes']
+});
+```
+
+Alternately, specify (possibly empty) array of keys which should _not_ be synced in `localKeys`:
+
+```javascript
+var configs = new Configs({
+  enabled: true,
+  advanced: false,
+  attributes: 'alt|title'
+}, {
+  localKeys: ['advanced']
 });
 ```
