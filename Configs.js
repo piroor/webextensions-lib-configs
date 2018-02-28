@@ -68,7 +68,7 @@ Configs.prototype = {
   $tryLoad : async function() {
     this.$log('load');
     this.$applyValues(this.$default);
-      browser.runtime.onMessage.addListener(this.$onMessage.bind(this));
+    browser.runtime.onMessage.addListener(this.$onMessage.bind(this));
     var values;
     try {
       if (this.$shouldUseStorage) { // background mode
