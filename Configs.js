@@ -100,13 +100,11 @@ Configs.prototype = {
         this.$log(`load: loaded for ${location.origin}:`, { localValues, syncedValues, managedValues );
         values = Object.assign(values, syncedValues || {}, managedValues || {});
         this.$applyValues(values);
-        if (lockedKeys) {
-          this.$locked = lockedKeys;
-        }
-        if (managedValues) {
-          Object.keys(managedValues).map(aKey => {
-            this.$updateLocked(aKey, true);
-          });
+        lockedKeys = lockedKeys || [];
+        if (managedValues)
+          lockedKeys = lockedKeys.concat(Object.keys(managedValues));
+        for (let key of lockedKeys) {
+          this.$updateLocked(key, true);
         }
         browser.storage.onChanged.addListener(this.$onChanged.bind(this));
       }
