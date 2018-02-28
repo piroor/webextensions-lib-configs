@@ -76,9 +76,13 @@ Configs.prototype = {
         values = await browser.storage.local.get(this.$default);
         values = values || this.$default;
         if (this.$syncKeys && this.$syncKeys.length) {
+          try {
           let syncedValues = await browser.storage.sync.get(this.$syncKeys);
           this.$log(`load: loaded from sync for ${location.origin}`, syncedValues);
           values = Object.assign(values, syncedValues);
+          }
+          catch(e) {
+          }
         }
         this.$log(`load: loaded for ${location.origin}`, values);
         this.$applyValues(values);
@@ -261,9 +265,13 @@ Configs.prototype = {
       }
       try {
         if (this.$syncKeys.includes(aKey)) {
+          try {
           browser.storage.sync.set(updatedKey, () => {
             this.$log('successfully synced', updatedKey);
           });
+          }
+          catch(e) {
+          }
         }
       }
       catch(e) {
