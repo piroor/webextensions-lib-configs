@@ -73,40 +73,53 @@ Configs.prototype = {
     try {
       if (this.$shouldUseStorage) { // background mode
         this.$log(`load: try load from storage on  ${location.href}`);
-        let [localValues, syncedValues, managedValues, lockedKeys] = await Promise.all([
+        let [localValues, managedValues, lockedKeys] = await Promise.all([
           browser.storage.local.get(this.$default),
-          (async () => {
-            if (!this.$syncKeys || this.$syncKeys.length <= 0)
-              return null;
-            try {
-              return browser.storage.sync.get(this.$syncKeys);
-            }
-            catch(e) {
-              return null;
-            }
-          })(),
           (async () => {
             if (!browser.storage.managed)
               return null;
             try {
-              return browser.storage.managed.get();
+              const managedValues = await browser.storage.managed.get();
+              return managedValues || null;
             }
             catch(e) {
               return null;
             }
           })(),
-          browser.runtime.sendMessage({ type : 'Configs:request:locked' })
+          (async () => {
+            try {
+              const lockedKeys = await browser.runtime.sendMessage({ type : 'Configs:request:locked' })
+              return lockedKeys;
+            }
+            catch(e) {
+            }
+            return {};
+          })()
         ]);
-        this.$log(`load: loaded for ${location.origin}:`, { localValues, syncedValues, managedValues });
-        values = Object.assign(values, syncedValues || {}, managedValues || {});
+        this.$log(`load: loaded for ${location.origin}:`, { localValues, managedValues, lockedKeys });
+        values = Object.assign({}, localValues || {}, managedValues || {});
         this.$applyValues(values);
-        lockedKeys = lockedKeys || [];
+        lockedKeys = Object.keys(lockedKeys || {});
         if (managedValues)
           lockedKeys = lockedKeys.concat(Object.keys(managedValues));
         for (let key of lockedKeys) {
           this.$updateLocked(key, true);
         }
         browser.storage.onChanged.addListener(this.$onChanged.bind(this));
+        if (this.$syncKeys || this.$syncKeys.length > 0) {
+          try {
+            browser.storage.sync.get(this.$syncKeys).then(syncedValues => {
+              if (!syncedValues)
+                return;
+              for (let key of Object.keys(syncedValues)) {
+                this[key] = syncedValues[key];
+              }
+            });
+          }
+          catch(e) {
+            return null;
+          }
+        }
       }
       else { // content mode
         this.$log('load: initialize promise on  ' + location.href);
