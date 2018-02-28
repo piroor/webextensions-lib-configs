@@ -97,7 +97,7 @@ Configs.prototype = {
           })(),
           browser.runtime.sendMessage({ type : 'Configs:request:locked' })
         ]);
-        this.$log(`load: loaded for ${location.origin}:`, { localValues, syncedValues, managedValues );
+        this.$log(`load: loaded for ${location.origin}:`, { localValues, syncedValues, managedValues });
         values = Object.assign(values, syncedValues || {}, managedValues || {});
         this.$applyValues(values);
         lockedKeys = lockedKeys || [];
