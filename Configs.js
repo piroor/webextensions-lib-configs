@@ -69,40 +69,44 @@ Configs.prototype = {
     this.$log('load');
     this.$applyValues(this.$default);
     browser.runtime.onMessage.addListener(this.$onMessage.bind(this));
-    var values;
+    let values;
     try {
       if (this.$shouldUseStorage) { // background mode
         this.$log(`load: try load from storage on  ${location.href}`);
-        values = await browser.storage.local.get(this.$default);
-        values = values || this.$default;
-        if (this.$syncKeys && this.$syncKeys.length) {
-          try {
-            let syncedValues = await browser.storage.sync.get(this.$syncKeys);
-            this.$log(`load: loaded from sync for ${location.origin}`, syncedValues);
-            values = Object.assign(values, syncedValues);
-          }
-          catch(e) {
-          }
-        }
-        this.$log(`load: loaded for ${location.origin}`, values);
+        let [localValues, syncedValues, managedValues, lockedKeys] = await Promise.all([
+          browser.storage.local.get(this.$default),
+          (async () => {
+            if (!this.$syncKeys || this.$syncKeys.length <= 0)
+              return null;
+            try {
+              return browser.storage.sync.get(this.$syncKeys);
+            }
+            catch(e) {
+              return null;
+            }
+          })(),
+          (async () => {
+            if (!browser.storage.managed)
+              return null;
+            try {
+              return browser.storage.managed.get();
+            }
+            catch(e) {
+              return null;
+            }
+          })(),
+          browser.runtime.sendMessage({ type : 'Configs:request:locked' })
+        ]);
+        this.$log(`load: loaded for ${location.origin}:`, { localValues, syncedValues, managedValues );
+        values = Object.assign(values, syncedValues || {}, managedValues || {});
         this.$applyValues(values);
-        if (browser.storage.managed) {
-          try {
-            let values = await browser.storage.managed.get();
-            Object.keys(values).map(aKey => {
-              this[aKey] = values[aKey];
-              this.$updateLocked(aKey, true);
-            });
-          }
-          catch(e) {
-          }
+        if (lockedKeys) {
+          this.$locked = lockedKeys;
         }
-        let response = await browser.runtime.sendMessage({
-              type : 'Configs:request:locked'
-            });
-        if (response) {
-          this.$log('locked: responded', response);
-          this.$locked = response;
+        if (managedValues) {
+          Object.keys(managedValues).map(aKey => {
+            this.$updateLocked(aKey, true);
+          });
         }
         browser.storage.onChanged.addListener(this.$onChanged.bind(this));
       }
