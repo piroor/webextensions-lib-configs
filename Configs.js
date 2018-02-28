@@ -97,6 +97,13 @@ Configs.prototype = {
           catch(e) {
           }
         }
+        let response = await browser.runtime.sendMessage({
+              type : 'Configs:request:locked'
+            });
+        if (response) {
+          this.$log('locked: responded', response);
+          this.$locked = response;
+        }
         browser.storage.onChanged.addListener(this.$onChanged.bind(this));
       }
       else { // content mode
@@ -182,6 +189,7 @@ Configs.prototype = {
 
   BACKEND_COMMANDS: [
     'Configs:request:load',
+    'Configs:request:locked',
     'Configs:update',
     'Configs:request:reset'
   ],
@@ -199,6 +207,11 @@ Configs.prototype = {
           values     : values,
           lockedKeys : this.$locked
         };
+      }; break;
+
+      case 'Configs:request:locked': {
+        let values = await this.$load();
+        return this.$locked;
       }; break;
 
       case 'Configs:update': {
