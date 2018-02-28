@@ -77,9 +77,9 @@ Configs.prototype = {
         values = values || this.$default;
         if (this.$syncKeys && this.$syncKeys.length) {
           try {
-          let syncedValues = await browser.storage.sync.get(this.$syncKeys);
-          this.$log(`load: loaded from sync for ${location.origin}`, syncedValues);
-          values = Object.assign(values, syncedValues);
+            let syncedValues = await browser.storage.sync.get(this.$syncKeys);
+            this.$log(`load: loaded from sync for ${location.origin}`, syncedValues);
+            values = Object.assign(values, syncedValues);
           }
           catch(e) {
           }
@@ -266,9 +266,9 @@ Configs.prototype = {
       try {
         if (this.$syncKeys.includes(aKey)) {
           try {
-          browser.storage.sync.set(updatedKey, () => {
-            this.$log('successfully synced', updatedKey);
-          });
+            browser.storage.sync.set(updatedKey, () => {
+              this.$log('successfully synced', updatedKey);
+            });
           }
           catch(e) {
           }
