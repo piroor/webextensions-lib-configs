@@ -123,9 +123,16 @@ Configs.prototype = {
       }
       else { // content mode
         this.$log('load: initialize promise on  ' + location.href);
-        let response = await browser.runtime.sendMessage({
+        let response;
+        while (true) {
+          response = await browser.runtime.sendMessage({
               type : 'Configs:request:load'
             });
+          if (response)
+            break;
+          this.$log('load: waiting for anyone can access to the storage... ' + location.href);
+          await new Promise((aResolve, aReject) => setTimeout(aResolve, 200));
+        }
         this.$log('load: responded', response);
         values = response && response.values || this.$default;
         this.$applyValues(values);
