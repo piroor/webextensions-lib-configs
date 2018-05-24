@@ -31,12 +31,12 @@ Configs.prototype = {
     }
   },
 
-  $addObserver : function(aObserver) {
+  $addObserver(aObserver) {
     var index = this.$observers.indexOf(aObserver);
     if (index < 0)
       this.$observers.push(aObserver);
   },
-  $removeObserver : function(aObserver) {
+  $removeObserver(aObserver) {
     var index = this.$observers.indexOf(aObserver);
     if (index > -1)
       this.$observers.splice(index, 1);
@@ -48,7 +48,7 @@ Configs.prototype = {
              location.protocol === 'moz-extension:';
   },
 
-  $log : function(aMessage, ...aArgs) {
+  $log(aMessage, ...aArgs) {
     if (!this.$logging)
       return;
 
@@ -60,7 +60,7 @@ Configs.prototype = {
       console.log(aMessage, ...aArgs);
   },
 
-  $load : function() {
+  $load() {
     return this.$_promisedLoad ||
              (this.$_promisedLoad = this.$tryLoad());
   },
@@ -145,7 +145,7 @@ Configs.prototype = {
       throw e;
     }
   },
-  $applyValues : function(aValues) {
+  $applyValues(aValues) {
     Object.keys(aValues).forEach(aKey => {
       if (aKey in this.$locked)
         return;
@@ -170,19 +170,19 @@ Configs.prototype = {
     });
   },
 
-  $lock : function(aKey) {
+  $lock(aKey) {
     this.$log('locking: ' + aKey);
     this.$updateLocked(aKey, true);
     this.$notifyUpdated(aKey);
   },
 
-  $unlock : function(aKey) {
+  $unlock(aKey) {
     this.$log('unlocking: ' + aKey);
     this.$updateLocked(aKey, false);
     this.$notifyUpdated(aKey);
   },
 
-  $updateLocked : function(aKey, aLocked) {
+  $updateLocked(aKey, aLocked) {
     if (aLocked) {
       this.$locked[aKey] = true;
     }
@@ -191,7 +191,7 @@ Configs.prototype = {
     }
   },
 
-  $onMessage : function(aMessage, aSender, aRespond) {
+  $onMessage(aMessage, aSender, aRespond) {
     if (!aMessage ||
         typeof aMessage.type != 'string')
       return;
@@ -265,7 +265,7 @@ Configs.prototype = {
     }
   },
 
-  $onChanged : function(aChanges) {
+  $onChanged(aChanges) {
     var changedKeys = Object.keys(aChanges);
     changedKeys.forEach(aKey => {
       this.$lastValues[aKey] = aChanges[aKey].newValue;
@@ -331,7 +331,7 @@ Configs.prototype = {
       });
     }
   },
-  $notifyToObservers : function(aKey) {
+  $notifyToObservers(aKey) {
     this.$observers.forEach(aObserver => {
       if (typeof aObserver === 'function')
         aObserver(aKey);
