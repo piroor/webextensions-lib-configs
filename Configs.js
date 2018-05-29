@@ -72,26 +72,42 @@ Configs.prototype = {
     let values;
     try {
       if (this.$shouldUseStorage) { // background mode
-        this.$log(`load: try load from storage on  ${location.href}`);
+        this.$log(`load: try load from storage on ${location.href}`);
         let [localValues, managedValues, lockedKeys] = await Promise.all([
-          browser.storage.local.get(this.$default),
           (async () => {
-            if (!browser.storage.managed)
+            try {
+              const localValues = await browser.storage.local.get(this.$default);
+              this.$log('load: successfully loaded local storage');
+              return localValues;
+            }
+            catch(e) {
+              this.$log('load: failed to load local storage: ', String(e));
+            }
+            return {};
+          })(),
+          (async () => {
+            if (!browser.storage.managed) {
+              this.$log('load: skip managed storage');
               return null;
+            }
             try {
               const managedValues = await browser.storage.managed.get();
+              this.$log('load: successfully loaded managed storage');
               return managedValues || null;
             }
             catch(e) {
-              return null;
+              this.$log('load: failed to load managed storage: ', String(e));
             }
+            return null;
           })(),
           (async () => {
             try {
-              const lockedKeys = await browser.runtime.sendMessage({ type : 'Configs:request:locked' })
+              const lockedKeys = await browser.runtime.sendMessage({ type : 'Configs:request:locked' });
+              this.$log('load: successfully synchronized locked state');
               return lockedKeys;
             }
             catch(e) {
+              this.$log('load: failed to synchronize locked state: ', String(e));
             }
             return {};
           })()
@@ -99,16 +115,19 @@ Configs.prototype = {
         this.$log(`load: loaded for ${location.origin}:`, { localValues, managedValues, lockedKeys });
         values = Object.assign({}, localValues || {}, managedValues || {});
         this.$applyValues(values);
+        this.$log('load: values are applied');
         lockedKeys = Object.keys(lockedKeys || {});
         if (managedValues)
           lockedKeys = lockedKeys.concat(Object.keys(managedValues));
         for (let key of lockedKeys) {
           this.$updateLocked(key, true);
         }
+        this.$log('load: locked state is applied');
         browser.storage.onChanged.addListener(this.$onChanged.bind(this));
         if (this.$syncKeys || this.$syncKeys.length > 0) {
           try {
             browser.storage.sync.get(this.$syncKeys).then(syncedValues => {
+              this.$log('load: successfully loaded sync storage');
               if (!syncedValues)
                 return;
               for (let key of Object.keys(syncedValues)) {
@@ -117,31 +136,39 @@ Configs.prototype = {
             });
           }
           catch(e) {
+            this.$log('load: failed to read sync storage: ', String(e));
             return null;
           }
         }
       }
       else { // content mode
-        this.$log('load: initialize promise on  ' + location.href);
+        this.$log(`load: try load from background on ${location.href}`);
         let response;
         while (true) {
-          response = await browser.runtime.sendMessage({
-              type : 'Configs:request:load'
-            });
-          if (response)
-            break;
+          try {
+            response = await browser.runtime.sendMessage({
+                type : 'Configs:request:load'
+              });
+            if (response)
+              break;
+          }
+          catch(e) {
+            this.$log('load: failed to load configs from background: ', String(e));
+          }
           this.$log('load: waiting for anyone can access to the storage... ' + location.href);
           await new Promise((aResolve, aReject) => setTimeout(aResolve, 200));
         }
         this.$log('load: responded', response);
         values = response && response.values || this.$default;
         this.$applyValues(values);
+        this.$log('load: values are applied');
         this.$locked = response && response.lockedKeys || {};
+        this.$log('load: locked state is applied');
       }
       return values;
     }
     catch(e) {
-      this.$log('load: failed', e, e.stack);
+      this.$log('load: fatal error: ', e, e.stack);
       throw e;
     }
   },
