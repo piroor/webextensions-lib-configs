@@ -8,7 +8,7 @@
 
 function Configs(aDefaults, aOptions = { syncKeys: [] }) {
   this.$default = aDefaults;
-  this.$logging = false;
+  this.$logging = aOptions.logging || false;
   this.$locked = {};
   this.$lastValues = {};
   this.$syncKeys = aOptions.localKeys ? 
