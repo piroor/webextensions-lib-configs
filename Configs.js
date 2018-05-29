@@ -68,7 +68,6 @@ Configs.prototype = {
   $tryLoad : async function() {
     this.$log('load');
     this.$applyValues(this.$default);
-    browser.runtime.onMessage.addListener(this.$onMessage.bind(this));
     let values;
     try {
       if (this.$shouldUseStorage) { // background mode
@@ -165,6 +164,7 @@ Configs.prototype = {
         this.$locked = response && response.lockedKeys || {};
         this.$log('load: locked state is applied');
       }
+      browser.runtime.onMessage.addListener(this.$onMessage.bind(this));
       return values;
     }
     catch(e) {
