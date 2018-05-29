@@ -101,7 +101,9 @@ Configs.prototype = {
           })(),
           (async () => {
             try {
-              const lockedKeys = await browser.runtime.sendMessage({ type : 'Configs:request:locked' });
+              const lockedKeys = await browser.runtime.sendMessage({
+                type : 'Configs:request:locked'
+              });
               this.$log('load: successfully synchronized locked state');
               return lockedKeys;
             }
