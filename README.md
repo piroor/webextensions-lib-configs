@@ -62,7 +62,9 @@ And, define an instance with default values on each namespace like:
 var configs = new Configs({
   enabled: true,
   advanced: false,
-  attributes: 'alt|title'
+  attributes: 'alt|title',
+  entries: [],
+  cache: {}
 });
 ```
 
@@ -80,6 +82,7 @@ After all values are loaded, you can access loaded values via its own properties
 console.log(configs.enabled); // => true (default value)
 console.log(configs.advanced); // => false (default value)
 console.log(configs.attributes); // => "alt|title" (default value)
+console.log(configs.cache); // => {} (default value)
 ```
 
 If you set a new value, it will be notified to the background page, then stored to the local storage as the user value and dispatched to all other namespaces.
@@ -101,6 +104,53 @@ console.log(configs.$default.enabled); // => true (default value)
 configs.enabled = configs.$default.enabled; // reset to default
 
 configs.$reset(); // reset all to default
+```
+
+### Important note around object or array values
+
+When you hope to update a non-primitive configuration values, note that you must replace the object itself.
+For example, deep clone based on `JSON.parse()` and `JSON.stringify()` will be effective:
+
+```javascript
+var newEntries = JSON.parse(JSON.stringify(configs.entries)); // deep clone
+entries.push('added item');
+configs.entries = newEntries;
+
+var newCache = JSON.parse(JSON.stringify(configs.cache)); // deep clone
+newCache.addedItem = true;
+configs.cache = newCache;
+```
+
+In other words, following codes don't work as expected:
+
+```javascript
+// Directly modified object won't be saved.
+configs.entries.push('added item');
+configs.cache.addedItems = true;
+
+// Simple assignment also uses the object itself,
+// so this example is same to the previous.
+{
+   let newEntries = configs.entries;
+   newEntries.push('added item');
+   configs.entries = newEntries;
+
+   let newCache = configs.cache;
+   newCache.addedItems = true;
+   configs.cache = newCache;
+}
+
+// Shallow clone is better than above, and it works as expected
+// only when all values are primitive.
+{
+   let newEntries = configs.entries.slice(0);
+   newEntries.push('added item');
+   configs.entries = newEntries;
+
+   let newCache = Object.assign({}, configs.cache); // shallow clone
+   newCache.addedItems = true;
+   configs.cache = newCache;
+}
 ```
 
 ## Managed Storage
