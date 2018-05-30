@@ -188,7 +188,7 @@ Configs.prototype = {
             this.$log(`warning: ${aKey} is locked and not updated`);
             return aValue;
           }
-          if (aValue == this.$lastValues[aKey])
+          if (JSON.stringify(aValue) == JSON.stringify(this.$lastValues[aKey]))
             return aValue;
           this.$log(`set: ${aKey} = ${aValue}`);
           this.$lastValues[aKey] = aValue;
