@@ -140,7 +140,7 @@ class Configs {
         continue;
       this._lastValues[key] = value;
       if (key in this)
-        return;
+        continue;
       Object.defineProperty(this, key, {
         get: () => this._lastValues[key],
         set: (aValue) => this._setValue(key, aValue)
