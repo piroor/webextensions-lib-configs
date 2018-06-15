@@ -1,6 +1,6 @@
 # webextensions-lib-configs
 
-Provides ability to store/load configurations.
+Provides ability to store/load configurations, on Firefox 52 and later.
 
 By the [bug 1197346](https://bugzilla.mozilla.org/show_bug.cgi?id=1197346), now we don't have to do inter-sandboxes comunication to read/write configuration values.
 After the bug, this library is still effective to provide easy access for configuration values.
