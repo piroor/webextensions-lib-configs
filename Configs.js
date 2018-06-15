@@ -8,7 +8,6 @@
 
 // eslint-disable-next-line no-unused-vars
 class Configs {
-
   constructor(aDefaults, aOptions = { syncKeys: [], logger: null }) {
     this.$default = aDefaults;
     this._logging = aOptions.logging || false;
@@ -136,7 +135,7 @@ class Configs {
     }
   }
   _applyValues(aValues) {
-    for (const [key, value] of aValues) {
+    for (const [key, value] of Object.entries(aValues)) {
       if (this._locked.has(key))
         continue;
       this._lastValues[key] = value;
