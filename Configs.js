@@ -198,57 +198,33 @@ Configs.prototype = {
     }
   },
 
-  BACKEND_COMMANDS: [
-    'Configs:request:load',
-    'Configs:request:locked',
-    'Configs:update',
-    'Configs:request:reset'
-  ],
-  FRONTEND_COMMANDS: [
-    'Configs:updated',
-    'Configs:reseted',
-  ],
   $processMessage : async function(aMessage, aSender) {
     this.$log(`onMessage: ${aMessage.type}`, aMessage, aSender);
     switch (aMessage.type) {
-      // backend (background, sidebar)
-      case 'Configs:request:load': {
-        const values = await this.$load();
-        return {
-          values     : values,
-          lockedKeys : this.$locked
-        };
-      }; break;
-
-      case 'Configs:request:locked': {
-        await this.$load();
-        return this.$locked;
-      }; break;
-
-      case 'Configs:update': {
-        this.$updateLocked(aMessage.key, aMessage.locked);
-        this[aMessage.key] = aMessage.value;
-      }; break;
-
-      case 'Configs:request:reset': {
-        return this.$reset();
-      }; break;
-
-
-      // frontend (content, etc.)
-      case 'Configs:updated': {
-        this.$updateLocked(aMessage.key, aMessage.locked);
-        this.$lastValues[aMessage.key] = aMessage.value;
-        this.$notifyToObservers(aMessage.key);
-      }; break;
-
-      case 'Configs:reseted': {
-        this.$applyValues(this.$default);
-        Object.keys(this.$default).forEach(aKey => {
-          this.$notifyToObservers(aKey);
+      case 'Configs:request:load':
+        return (async () => {
+          const values = await this.$load();
+          return {
+            values     : values,
+            lockedKeys : this.$locked
+          };
         });
         break;
-      }
+
+      case 'Configs:request:locked':
+        return (async () => {
+          await this.$load();
+          return this.$locked;
+        })();
+        break;
+
+      case 'Configs:update':
+        this.$updateLocked(aMessage.key, aMessage.locked);
+        this[aMessage.key] = aMessage.value;
+        break;
+
+      case 'Configs:request:reset':
+        return this.$reset();
     }
   },
 
