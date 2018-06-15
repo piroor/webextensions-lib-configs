@@ -32,12 +32,12 @@ Configs.prototype = {
   },
 
   $addObserver(aObserver) {
-    var index = this.$observers.indexOf(aObserver);
+    const index = this.$observers.indexOf(aObserver);
     if (index < 0)
       this.$observers.push(aObserver);
   },
   $removeObserver(aObserver) {
-    var index = this.$observers.indexOf(aObserver);
+    const index = this.$observers.indexOf(aObserver);
     if (index > -1)
       this.$observers.splice(index, 1);
   },
@@ -52,7 +52,7 @@ Configs.prototype = {
     if (!this.$logging)
       return;
 
-    var type = this.$shouldUseStorage ? 'storage' : 'bridge' ;
+    const type = this.$shouldUseStorage ? 'storage' : 'bridge' ;
     aMessage = `Configs[${type}] ${aMessage}`;
     if (typeof window.log === 'function')
       log(aMessage, ...aArgs);
@@ -72,6 +72,9 @@ Configs.prototype = {
     try {
       if (this.$shouldUseStorage) { // background mode
         this.$log(`load: try load from storage on ${location.href}`);
+        // We cannot define constants and variables at a time...
+        // [const localValues, let managedValues, let lockedKeys] = await Promise.all([
+        // eslint-disable-next-line prefer-const
         let [localValues, managedValues, lockedKeys] = await Promise.all([
           (async () => {
             try {
@@ -120,7 +123,7 @@ Configs.prototype = {
         lockedKeys = Object.keys(lockedKeys || {});
         if (managedValues)
           lockedKeys = lockedKeys.concat(Object.keys(managedValues));
-        for (let key of lockedKeys) {
+        for (const key of lockedKeys) {
           this.$updateLocked(key, true);
         }
         this.$log('load: locked state is applied');
@@ -131,7 +134,7 @@ Configs.prototype = {
               this.$log('load: successfully loaded sync storage');
               if (!syncedValues)
                 return;
-              for (let key of Object.keys(syncedValues)) {
+              for (const key of Object.keys(syncedValues)) {
                 this[key] = syncedValues[key];
               }
             });
@@ -148,8 +151,8 @@ Configs.prototype = {
         while (true) {
           try {
             response = await browser.runtime.sendMessage({
-                type : 'Configs:request:load'
-              });
+              type : 'Configs:request:load'
+            });
             if (response)
               break;
           }
@@ -157,7 +160,7 @@ Configs.prototype = {
             this.$log('load: failed to load configs from background: ', String(e));
           }
           this.$log('load: waiting for anyone can access to the storage... ' + location.href);
-          await new Promise((aResolve, aReject) => setTimeout(aResolve, 200));
+          await new Promise((aResolve, _aReject) => setTimeout(aResolve, 200));
         }
         this.$log('load: responded', response);
         values = response && response.values || this.$default;
@@ -255,7 +258,7 @@ Configs.prototype = {
     switch (aMessage.type) {
       // backend (background, sidebar)
       case 'Configs:request:load': {
-        let values = await this.$load();
+        const values = await this.$load();
         return {
           values     : values,
           lockedKeys : this.$locked
@@ -263,7 +266,7 @@ Configs.prototype = {
       }; break;
 
       case 'Configs:request:locked': {
-        let values = await this.$load();
+        await this.$load();
         return this.$locked;
       }; break;
 
@@ -295,7 +298,7 @@ Configs.prototype = {
   },
 
   $onChanged(aChanges) {
-    var changedKeys = Object.keys(aChanges);
+    const changedKeys = Object.keys(aChanges);
     changedKeys.forEach(aKey => {
       this.$lastValues[aKey] = aChanges[aKey].newValue;
       this.$notifyToObservers(aKey);
@@ -303,23 +306,23 @@ Configs.prototype = {
   },
 
   $broadcast : async function(aMessage) {
-    var promises = [];
+    let promises = [];
     if (browser.runtime) {
       promises.push(await browser.runtime.sendMessage(aMessage));
     }
     if (browser.tabs) {
-      let tabs = await browser.tabs.query({ windowType: 'normal' });
+      const tabs = await browser.tabs.query({ windowType: 'normal' });
       promises = promises.concat(tabs.map(aTab =>
-                   browser.tabs.sendMessage(aTab.id, aMessage, null)));
+        browser.tabs.sendMessage(aTab.id, aMessage, null)));
     }
     return await Promise.all(promises);
   },
   $notifyUpdated : async function(aKey) {
-    var value = this[aKey];
-    var locked = aKey in this.$locked;
+    const value = this[aKey];
+    const locked = aKey in this.$locked;
     if (this.$shouldUseStorage) {
       this.$log(`broadcast updated config: ${aKey} = ${value} (locked: ${locked})`);
-      let updatedKey = {};
+      const updatedKey = {};
       updatedKey[aKey] = value;
       try {
         browser.storage.local.set(updatedKey, () => {
@@ -336,7 +339,7 @@ Configs.prototype = {
               this.$log('successfully synced', updatedKey);
             });
           }
-          catch(e) {
+          catch(_e) {
           }
         }
       }
@@ -353,10 +356,10 @@ Configs.prototype = {
     else {
       this.$log(`request to store config: ${aKey} = ${value} (locked: ${locked})`);
       return browser.runtime.sendMessage({
-         type  : 'Configs:update',
-         key   : aKey,
-         value : value,
-         locked : locked
+        type  : 'Configs:update',
+        key   : aKey,
+        value : value,
+        locked : locked
       });
     }
   },
