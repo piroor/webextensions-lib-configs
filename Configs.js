@@ -19,9 +19,9 @@ function Configs(aDefaults, aOptions = { syncKeys: [] }) {
 Configs.prototype = {
   $reset : async function() {
     this.$applyValues(this.$default);
-      return this.$broadcast({
-        type : 'Configs:reseted'
-      });
+    return this.$broadcast({
+      type : 'Configs:reseted'
+    });
   },
 
   $addObserver(aObserver) {
@@ -57,79 +57,79 @@ Configs.prototype = {
     this.$applyValues(this.$default);
     let values;
     try {
-        this.$log(`load: try load from storage on ${location.href}`);
-        // We cannot define constants and variables at a time...
-        // [const localValues, let managedValues, let lockedKeys] = await Promise.all([
-        // eslint-disable-next-line prefer-const
-        let [localValues, managedValues, lockedKeys] = await Promise.all([
-          (async () => {
-            try {
-              const localValues = await browser.storage.local.get(this.$default);
-              this.$log('load: successfully loaded local storage');
-              return localValues;
-            }
-            catch(e) {
-              this.$log('load: failed to load local storage: ', String(e));
-            }
-            return {};
-          })(),
-          (async () => {
-            if (!browser.storage.managed) {
-              this.$log('load: skip managed storage');
-              return null;
-            }
-            try {
-              const managedValues = await browser.storage.managed.get();
-              this.$log('load: successfully loaded managed storage');
-              return managedValues || null;
-            }
-            catch(e) {
-              this.$log('load: failed to load managed storage: ', String(e));
-            }
-            return null;
-          })(),
-          (async () => {
-            try {
-              const lockedKeys = await browser.runtime.sendMessage({
-                type : 'Configs:request:locked'
-              });
-              this.$log('load: successfully synchronized locked state');
-              return lockedKeys;
-            }
-            catch(e) {
-              this.$log('load: failed to synchronize locked state: ', String(e));
-            }
-            return {};
-          })()
-        ]);
-        this.$log(`load: loaded for ${location.origin}:`, { localValues, managedValues, lockedKeys });
-        values = Object.assign({}, localValues || {}, managedValues || {});
-        this.$applyValues(values);
-        this.$log('load: values are applied');
-        lockedKeys = Object.keys(lockedKeys || {});
-        if (managedValues)
-          lockedKeys = lockedKeys.concat(Object.keys(managedValues));
-        for (const key of lockedKeys) {
-          this.$updateLocked(key, true);
-        }
-        this.$log('load: locked state is applied');
-        browser.storage.onChanged.addListener(this.$onChanged.bind(this));
-        if (this.$syncKeys || this.$syncKeys.length > 0) {
+      this.$log(`load: try load from storage on ${location.href}`);
+      // We cannot define constants and variables at a time...
+      // [const localValues, let managedValues, let lockedKeys] = await Promise.all([
+      // eslint-disable-next-line prefer-const
+      let [localValues, managedValues, lockedKeys] = await Promise.all([
+        (async () => {
           try {
-            browser.storage.sync.get(this.$syncKeys).then(syncedValues => {
-              this.$log('load: successfully loaded sync storage');
-              if (!syncedValues)
-                return;
-              for (const key of Object.keys(syncedValues)) {
-                this[key] = syncedValues[key];
-              }
-            });
+            const localValues = await browser.storage.local.get(this.$default);
+            this.$log('load: successfully loaded local storage');
+            return localValues;
           }
           catch(e) {
-            this.$log('load: failed to read sync storage: ', String(e));
+            this.$log('load: failed to load local storage: ', String(e));
+          }
+          return {};
+        })(),
+        (async () => {
+          if (!browser.storage.managed) {
+            this.$log('load: skip managed storage');
             return null;
           }
+          try {
+            const managedValues = await browser.storage.managed.get();
+            this.$log('load: successfully loaded managed storage');
+            return managedValues || null;
+          }
+          catch(e) {
+            this.$log('load: failed to load managed storage: ', String(e));
+          }
+          return null;
+        })(),
+        (async () => {
+          try {
+            const lockedKeys = await browser.runtime.sendMessage({
+              type : 'Configs:request:locked'
+            });
+            this.$log('load: successfully synchronized locked state');
+            return lockedKeys;
+          }
+          catch(e) {
+            this.$log('load: failed to synchronize locked state: ', String(e));
+          }
+          return {};
+        })()
+      ]);
+      this.$log(`load: loaded for ${location.origin}:`, { localValues, managedValues, lockedKeys });
+      values = Object.assign({}, localValues || {}, managedValues || {});
+      this.$applyValues(values);
+      this.$log('load: values are applied');
+      lockedKeys = Object.keys(lockedKeys || {});
+      if (managedValues)
+        lockedKeys = lockedKeys.concat(Object.keys(managedValues));
+      for (const key of lockedKeys) {
+        this.$updateLocked(key, true);
+      }
+      this.$log('load: locked state is applied');
+      browser.storage.onChanged.addListener(this.$onChanged.bind(this));
+      if (this.$syncKeys || this.$syncKeys.length > 0) {
+        try {
+          browser.storage.sync.get(this.$syncKeys).then(syncedValues => {
+            this.$log('load: successfully loaded sync storage');
+            if (!syncedValues)
+              return;
+            for (const key of Object.keys(syncedValues)) {
+              this[key] = syncedValues[key];
+            }
+          });
         }
+        catch(e) {
+          this.$log('load: failed to read sync storage: ', String(e));
+          return null;
+        }
+      }
       browser.runtime.onMessage.addListener(this.$onMessage.bind(this));
       return values;
     }
@@ -275,37 +275,37 @@ Configs.prototype = {
   $notifyUpdated : async function(aKey) {
     const value = this[aKey];
     const locked = aKey in this.$locked;
-      this.$log(`broadcast updated config: ${aKey} = ${value} (locked: ${locked})`);
-      const updatedKey = {};
-      updatedKey[aKey] = value;
-      try {
-        browser.storage.local.set(updatedKey, () => {
-          this.$log('successfully saved', updatedKey);
-        });
-      }
-      catch(e) {
-        this.$log('save: failed', e);
-      }
-      try {
-        if (this.$syncKeys.includes(aKey)) {
-          try {
-            browser.storage.sync.set(updatedKey, () => {
-              this.$log('successfully synced', updatedKey);
-            });
-          }
-          catch(_e) {
-          }
+    this.$log(`broadcast updated config: ${aKey} = ${value} (locked: ${locked})`);
+    const updatedKey = {};
+    updatedKey[aKey] = value;
+    try {
+      browser.storage.local.set(updatedKey, () => {
+        this.$log('successfully saved', updatedKey);
+      });
+    }
+    catch(e) {
+      this.$log('save: failed', e);
+    }
+    try {
+      if (this.$syncKeys.includes(aKey)) {
+        try {
+          browser.storage.sync.set(updatedKey, () => {
+            this.$log('successfully synced', updatedKey);
+          });
+        }
+        catch(_e) {
         }
       }
-      catch(e) {
-        this.$log('sync: failed', e);
-      }
-      return this.$broadcast({
-        type  : 'Configs:updated',
-        key   : aKey,
-        value : value,
-        locked : locked
-      });
+    }
+    catch(e) {
+      this.$log('sync: failed', e);
+    }
+    return this.$broadcast({
+      type  : 'Configs:updated',
+      key   : aKey,
+      value : value,
+      locked : locked
+    });
   },
   $notifyToObservers(aKey) {
     this.$observers.forEach(aObserver => {
