@@ -6,30 +6,33 @@
 
 'use strict';
 
-function Configs(aDefaults, aOptions = { syncKeys: [], logger: null }) {
+// eslint-disable-next-line no-unused-vars
+class Configs {
+
+  constructor(aDefaults, aOptions = { syncKeys: [], logger: null }) {
   this.$default = aDefaults;
   this._logging = aOptions.logging || false;
   this.$logger = aOptions.logger;
   this._locked = new Set();
   this._lastValues = {};
+  this._observers = new Set();
   this._syncKeys = aOptions.localKeys ? 
     Object.keys(aDefaults).filter(x => !aOptions.localKeys.includes(x)) : 
     (aOptions.syncKeys || []);
   this.$loaded = this._load();
-}
-Configs.prototype = {
-  $reset : async function() {
+  }
+
+  async $reset() {
     this._applyValues(this.$default);
-  },
+  }
 
   $addObserver(aObserver) {
     if (!this._observers.has(aObserver))
       this._observers.set(aObserver);
-  },
+  }
   $removeObserver(aObserver) {
     this._observers.delete(aObserver);
-  },
-  _observers : new Set(),
+  }
 
   _log(aMessage, ...aArgs) {
     if (!this._logging)
@@ -40,14 +43,14 @@ Configs.prototype = {
       this.$logger(aMessage, ...aArgs);
     else
       console.log(aMessage, ...aArgs);
-  },
+  }
 
   _load() {
     return this.$_promisedLoad ||
              (this.$_promisedLoad = this._tryLoad());
-  },
+  }
 
-  _tryLoad : async function() {
+  async _tryLoad() {
     this._log('load');
     this._applyValues(this.$default);
     let values;
@@ -131,7 +134,7 @@ Configs.prototype = {
       this._log('load: fatal error: ', e, e.stack);
       throw e;
     }
-  },
+  }
   _applyValues(aValues) {
     for (const [key, value] of aValues) {
       if (this._locked.has(key))
@@ -144,7 +147,7 @@ Configs.prototype = {
         set: (aValue) => this._setValue(key, aValue)
       });
     }
-  },
+  }
 
   _setValue(aKey, aValue) {
     if (this._locked.has(aKey)) {
@@ -176,17 +179,17 @@ Configs.prototype = {
       this._log('sync: failed', e);
     }
     return aValue;
-  },
+  }
 
   $lock(aKey) {
     this._log('locking: ' + aKey);
     this._updateLocked(aKey, true);
-  },
+  }
 
   $unlock(aKey) {
     this._log('unlocking: ' + aKey);
     this._updateLocked(aKey, false);
-  },
+  }
 
   _updateLocked(aKey, aLocked) {
     if (aLocked) {
@@ -201,7 +204,7 @@ Configs.prototype = {
         key:    aKey,
         locked: this._locked.has(aKey)
       });
-  },
+  }
 
   _onMessage(aMessage, aSender) {
     if (!aMessage ||
@@ -217,14 +220,14 @@ Configs.prototype = {
         this._updateLocked(aMessage.key, aMessage.locked);
         break;
     }
-  },
+  }
 
   _onChanged(aChanges) {
     for (const [key, change] of Object.entries(aChanges)) {
       this._lastValues[key] = change.newValue;
       this.$notifyToObservers(key);
     }
-  },
+  }
 
   $notifyToObservers(aKey) {
     for (const observer of this._observers) {
