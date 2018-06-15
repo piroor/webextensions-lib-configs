@@ -190,6 +190,10 @@ class Configs {
     this._updateLocked(aKey, false);
   }
 
+  $isLocked(aKey) {
+    return this._locked.has(aKey);
+  }
+
   _updateLocked(aKey, aLocked) {
     if (aLocked) {
       this._locked.add(aKey);
