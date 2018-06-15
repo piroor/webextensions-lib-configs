@@ -194,11 +194,12 @@ Configs.prototype = {
     else {
       this.$locked.delete(aKey);
     }
-    return this.$broadcast({
-      type:   'Configs:updateLocked',
-      key:    aKey,
-      locked: this.$locked.has(aKey)
-    });
+    if (browser.runtime)
+      browser.runtime.sendMessage({
+        type:   'Configs:updateLocked',
+        key:    aKey,
+        locked: this.$locked.has(aKey)
+      });
   },
 
   $onMessage(aMessage, aSender) {
@@ -218,31 +219,18 @@ Configs.prototype = {
   },
 
   $onChanged(aChanges) {
-    const changedKeys = Object.keys(aChanges);
-    changedKeys.forEach(aKey => {
-      this.$lastValues[aKey] = aChanges[aKey].newValue;
-      this.$notifyToObservers(aKey);
-    });
+    for (const [key, change] of Object.entries(aChanges)) {
+      this.$lastValues[key] = change.newValue;
+      this.$notifyToObservers(key);
+    }
   },
 
-  $broadcast : async function(aMessage) {
-    let promises = [];
-    if (browser.runtime) {
-      promises.push(await browser.runtime.sendMessage(aMessage));
-    }
-    if (browser.tabs) {
-      const tabs = await browser.tabs.query({ windowType: 'normal' });
-      promises = promises.concat(tabs.map(aTab =>
-        browser.tabs.sendMessage(aTab.id, aMessage, null)));
-    }
-    return await Promise.all(promises);
-  },
   $notifyToObservers(aKey) {
-    this.$observers.forEach(aObserver => {
-      if (typeof aObserver === 'function')
-        aObserver(aKey);
-      else if (aObserver && typeof aObserver.onChangeConfig === 'function')
-        aObserver.onChangeConfig(aKey);
-    });
+    for (const observer of this.$observers) {
+      if (typeof observer === 'function')
+        observer(aKey);
+      else if (observer && typeof observer.onChangeConfig === 'function')
+        observer.onChangeConfig(aKey);
+    }
   }
 };
