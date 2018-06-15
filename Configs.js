@@ -19,16 +19,9 @@ function Configs(aDefaults, aOptions = { syncKeys: [] }) {
 Configs.prototype = {
   $reset : async function() {
     this.$applyValues(this.$default);
-    if (this.$shouldUseStorage) {
       return this.$broadcast({
         type : 'Configs:reseted'
       });
-    }
-    else {
-      return await browser.runtime.sendMessage({
-        type : 'Configs:request:reset'
-      });
-    }
   },
 
   $addObserver(aObserver) {
@@ -43,17 +36,11 @@ Configs.prototype = {
   },
   $observers : [],
 
-  get $shouldUseStorage() {
-    return typeof browser.storage !== 'undefined' &&
-             location.protocol === 'moz-extension:';
-  },
-
   $log(aMessage, ...aArgs) {
     if (!this.$logging)
       return;
 
-    const type = this.$shouldUseStorage ? 'storage' : 'bridge' ;
-    aMessage = `Configs[${type}] ${aMessage}`;
+    aMessage = `Configs ${aMessage}`;
     if (typeof window.log === 'function')
       log(aMessage, ...aArgs);
     else
@@ -70,7 +57,6 @@ Configs.prototype = {
     this.$applyValues(this.$default);
     let values;
     try {
-      if (this.$shouldUseStorage) { // background mode
         this.$log(`load: try load from storage on ${location.href}`);
         // We cannot define constants and variables at a time...
         // [const localValues, let managedValues, let lockedKeys] = await Promise.all([
@@ -144,31 +130,6 @@ Configs.prototype = {
             return null;
           }
         }
-      }
-      else { // content mode
-        this.$log(`load: try load from background on ${location.href}`);
-        let response;
-        while (true) {
-          try {
-            response = await browser.runtime.sendMessage({
-              type : 'Configs:request:load'
-            });
-            if (response)
-              break;
-          }
-          catch(e) {
-            this.$log('load: failed to load configs from background: ', String(e));
-          }
-          this.$log('load: waiting for anyone can access to the storage... ' + location.href);
-          await new Promise((aResolve, _aReject) => setTimeout(aResolve, 200));
-        }
-        this.$log('load: responded', response);
-        values = response && response.values || this.$default;
-        this.$applyValues(values);
-        this.$log('load: values are applied');
-        this.$locked = response && response.lockedKeys || {};
-        this.$log('load: locked state is applied');
-      }
       browser.runtime.onMessage.addListener(this.$onMessage.bind(this));
       return values;
     }
@@ -226,12 +187,6 @@ Configs.prototype = {
   $onMessage(aMessage, aSender, aRespond) {
     if (!aMessage ||
         typeof aMessage.type != 'string')
-      return;
-
-    if ((this.$shouldUseStorage &&
-         (this.BACKEND_COMMANDS.indexOf(aMessage.type) < 0)) ||
-        (!this.$shouldUseStorage &&
-         (this.FRONTEND_COMMANDS.indexOf(aMessage.type) < 0)))
       return;
 
     if (aMessage.type.indexOf('Configs:request:') == 0) {
@@ -320,7 +275,6 @@ Configs.prototype = {
   $notifyUpdated : async function(aKey) {
     const value = this[aKey];
     const locked = aKey in this.$locked;
-    if (this.$shouldUseStorage) {
       this.$log(`broadcast updated config: ${aKey} = ${value} (locked: ${locked})`);
       const updatedKey = {};
       updatedKey[aKey] = value;
@@ -352,16 +306,6 @@ Configs.prototype = {
         value : value,
         locked : locked
       });
-    }
-    else {
-      this.$log(`request to store config: ${aKey} = ${value} (locked: ${locked})`);
-      return browser.runtime.sendMessage({
-        type  : 'Configs:update',
-        key   : aKey,
-        value : value,
-        locked : locked
-      });
-    }
   },
   $notifyToObservers(aKey) {
     this.$observers.forEach(aObserver => {
