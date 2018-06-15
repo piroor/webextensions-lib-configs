@@ -8,31 +8,31 @@
 
 function Configs(aDefaults, aOptions = { syncKeys: [], logger: null }) {
   this.$default = aDefaults;
-  this.$logging = aOptions.logging || false;
+  this._logging = aOptions.logging || false;
   this.$logger = aOptions.logger;
-  this.$locked = new Set();
-  this.$lastValues = {};
-  this.$syncKeys = aOptions.localKeys ? 
+  this._locked = new Set();
+  this._lastValues = {};
+  this._syncKeys = aOptions.localKeys ? 
     Object.keys(aDefaults).filter(x => !aOptions.localKeys.includes(x)) : 
     (aOptions.syncKeys || []);
-  this.$loaded = this.$load();
+  this.$loaded = this._load();
 }
 Configs.prototype = {
   $reset : async function() {
-    this.$applyValues(this.$default);
+    this._applyValues(this.$default);
   },
 
   $addObserver(aObserver) {
-    if (!this.$observers.has(aObserver))
-      this.$observers.set(aObserver);
+    if (!this._observers.has(aObserver))
+      this._observers.set(aObserver);
   },
   $removeObserver(aObserver) {
-    this.$observers.delete(aObserver);
+    this._observers.delete(aObserver);
   },
-  $observers : new Set(),
+  _observers : new Set(),
 
-  $log(aMessage, ...aArgs) {
-    if (!this.$logging)
+  _log(aMessage, ...aArgs) {
+    if (!this._logging)
       return;
 
     aMessage = `Configs ${aMessage}`;
@@ -42,17 +42,17 @@ Configs.prototype = {
       console.log(aMessage, ...aArgs);
   },
 
-  $load() {
+  _load() {
     return this.$_promisedLoad ||
-             (this.$_promisedLoad = this.$tryLoad());
+             (this.$_promisedLoad = this._tryLoad(());
   },
 
-  $tryLoad : async function() {
-    this.$log('load');
-    this.$applyValues(this.$default);
+  _tryLoad( : async function() {
+    this._log('load');
+    this._applyValues(this.$default);
     let values;
     try {
-      this.$log(`load: try load from storage on ${location.href}`);
+      this._log(`load: try load from storage on ${location.href}`);
       // We cannot define constants and variables at a time...
       // [const localValues, let managedValues, let lockedKeys] = await Promise.all([
       // eslint-disable-next-line prefer-const
@@ -60,26 +60,26 @@ Configs.prototype = {
         (async () => {
           try {
             const localValues = await browser.storage.local.get(this.$default);
-            this.$log('load: successfully loaded local storage');
+            this._log('load: successfully loaded local storage');
             return localValues;
           }
           catch(e) {
-            this.$log('load: failed to load local storage: ', String(e));
+            this._log('load: failed to load local storage: ', String(e));
           }
           return {};
         })(),
         (async () => {
           if (!browser.storage.managed) {
-            this.$log('load: skip managed storage');
+            this._log('load: skip managed storage');
             return null;
           }
           try {
             const managedValues = await browser.storage.managed.get();
-            this.$log('load: successfully loaded managed storage');
+            this._log('load: successfully loaded managed storage');
             return managedValues || null;
           }
           catch(e) {
-            this.$log('load: failed to load managed storage: ', String(e));
+            this._log('load: failed to load managed storage: ', String(e));
           }
           return null;
         })(),
@@ -88,30 +88,30 @@ Configs.prototype = {
             const lockedKeys = await browser.runtime.sendMessage({
               type: 'Configs:getLockedKeys'
             });
-            this.$log('load: successfully synchronized locked state');
+            this._log('load: successfully synchronized locked state');
             return lockedKeys;
           }
           catch(e) {
-            this.$log('load: failed to synchronize locked state: ', String(e));
+            this._log('load: failed to synchronize locked state: ', String(e));
           }
           return {};
         })()
       ]);
-      this.$log(`load: loaded for ${location.origin}:`, { localValues, managedValues, lockedKeys });
+      this._log(`load: loaded for ${location.origin}:`, { localValues, managedValues, lockedKeys });
       values = Object.assign({}, localValues || {}, managedValues || {});
-      this.$applyValues(values);
-      this.$log('load: values are applied');
+      this._applyValues(values);
+      this._log('load: values are applied');
       if (managedValues)
         lockedKeys = lockedKeys.concat(Array.from(managedValues.keys()));
       for (const key of lockedKeys) {
-        this.$updateLocked(key, true);
+        this._updateLocked(key, true);
       }
-      this.$log('load: locked state is applied');
-      browser.storage.onChanged.addListener(this.$onChanged.bind(this));
-      if (this.$syncKeys || this.$syncKeys.length > 0) {
+      this._log('load: locked state is applied');
+      browser.storage.onChanged.addListener(this._onChanged.bind(this));
+      if (this._syncKeys || this._syncKeys.length > 0) {
         try {
-          browser.storage.sync.get(this.$syncKeys).then(syncedValues => {
-            this.$log('load: successfully loaded sync storage');
+          browser.storage.sync.get(this._syncKeys).then(syncedValues => {
+            this._log('load: successfully loaded sync storage');
             if (!syncedValues)
               return;
             for (const key of Object.keys(syncedValues)) {
@@ -120,114 +120,114 @@ Configs.prototype = {
           });
         }
         catch(e) {
-          this.$log('load: failed to read sync storage: ', String(e));
+          this._log('load: failed to read sync storage: ', String(e));
           return null;
         }
       }
-      browser.runtime.onMessage.addListener(this.$onMessage.bind(this));
+      browser.runtime.onMessage.addListener(this._onMessage.bind(this));
       return values;
     }
     catch(e) {
-      this.$log('load: fatal error: ', e, e.stack);
+      this._log('load: fatal error: ', e, e.stack);
       throw e;
     }
   },
-  $applyValues(aValues) {
+  _applyValues(aValues) {
     for (const [key, value] of aValues) {
-      if (this.$locked.has(key))
+      if (this._locked.has(key))
         continue;
-      this.$lastValues[key] = value;
+      this._lastValues[key] = value;
       if (key in this)
         return;
       Object.defineProperty(this, key, {
-        get: () => this.$lastValues[key],
-        set: (aValue) => this.$setValue(key, aValue)
+        get: () => this._lastValues[key],
+        set: (aValue) => this._setValue(key, aValue)
       });
     }
   },
 
-  $setValue(aKey, aValue) {
-    if (this.$locked.has(aKey)) {
-      this.$log(`warning: ${aKey} is locked and not updated`);
+  _setValue(aKey, aValue) {
+    if (this._locked.has(aKey)) {
+      this._log(`warning: ${aKey} is locked and not updated`);
       return aValue;
     }
-    if (JSON.stringify(aValue) == JSON.stringify(this.$lastValues[aKey]))
+    if (JSON.stringify(aValue) == JSON.stringify(this._lastValues[aKey]))
       return aValue;
-    this.$log(`set: ${aKey} = ${aValue}`);
-    this.$lastValues[aKey] = aValue;
+    this._log(`set: ${aKey} = ${aValue}`);
+    this._lastValues[aKey] = aValue;
 
     const update = {};
     update[aKey] = aValue;
     try {
       browser.storage.local.set(update, () => {
-        this.$log('successfully saved', update);
+        this._log('successfully saved', update);
       });
     }
     catch(e) {
-      this.$log('save: failed', e);
+      this._log('save: failed', e);
     }
     try {
-      if (this.$syncKeys.includes(aKey))
+      if (this._syncKeys.includes(aKey))
         browser.storage.sync.set(update, () => {
-          this.$log('successfully synced', update);
+          this._log('successfully synced', update);
         });
     }
     catch(e) {
-      this.$log('sync: failed', e);
+      this._log('sync: failed', e);
     }
     return aValue;
   },
 
   $lock(aKey) {
-    this.$log('locking: ' + aKey);
-    this.$updateLocked(aKey, true);
+    this._log('locking: ' + aKey);
+    this._updateLocked(aKey, true);
   },
 
   $unlock(aKey) {
-    this.$log('unlocking: ' + aKey);
-    this.$updateLocked(aKey, false);
+    this._log('unlocking: ' + aKey);
+    this._updateLocked(aKey, false);
   },
 
-  $updateLocked(aKey, aLocked) {
+  _updateLocked(aKey, aLocked) {
     if (aLocked) {
-      this.$locked.set(aKey, true);
+      this._locked.set(aKey, true);
     }
     else {
-      this.$locked.delete(aKey);
+      this._locked.delete(aKey);
     }
     if (browser.runtime)
       browser.runtime.sendMessage({
         type:   'Configs:updateLocked',
         key:    aKey,
-        locked: this.$locked.has(aKey)
+        locked: this._locked.has(aKey)
       });
   },
 
-  $onMessage(aMessage, aSender) {
+  _onMessage(aMessage, aSender) {
     if (!aMessage ||
         typeof aMessage.type != 'string')
       return;
 
-    this.$log(`onMessage: ${aMessage.type}`, aMessage, aSender);
+    this._log(`onMessage: ${aMessage.type}`, aMessage, aSender);
     switch (aMessage.type) {
       case 'Configs:getLockedKeys':
-        return Promise.resolve(this.$locked.values());
+        return Promise.resolve(this._locked.values());
 
       case 'Configs:updateLocked':
-        this.$updateLocked(aMessage.key, aMessage.locked);
+        this._updateLocked(aMessage.key, aMessage.locked);
         break;
     }
   },
 
-  $onChanged(aChanges) {
+  _onChanged(aChanges) {
     for (const [key, change] of Object.entries(aChanges)) {
-      this.$lastValues[key] = change.newValue;
+      this._lastValues[key] = change.newValue;
       this.$notifyToObservers(key);
     }
   },
 
   $notifyToObservers(aKey) {
-    for (const observer of this.$observers) {
+    for (const observer of this._observers) {
       if (typeof observer === 'function')
         observer(aKey);
       else if (observer && typeof observer.onChangeConfig === 'function')
