@@ -132,17 +132,17 @@ Configs.prototype = {
     }
   },
   $applyValues(aValues) {
-    Object.keys(aValues).forEach(aKey => {
-      if (this.$locked.has(aKey))
+    for (const [key, value] of aValues) {
+      if (this.$locked.has(key))
+        continue;
+      this.$lastValues[key] = value;
+      if (key in this)
         return;
-      this.$lastValues[aKey] = aValues[aKey];
-      if (aKey in this)
-        return;
-      Object.defineProperty(this, aKey, {
-        get: () => this.$lastValues[aKey],
-        set: (aValue) => this.$setValue(aKey, aValue)
+      Object.defineProperty(this, key, {
+        get: () => this.$lastValues[key],
+        set: (aValue) => this.$setValue(key, aValue)
       });
-    });
+    }
   },
 
   $setValue(aKey, aValue) {
