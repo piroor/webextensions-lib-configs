@@ -44,10 +44,10 @@ Configs.prototype = {
 
   _load() {
     return this.$_promisedLoad ||
-             (this.$_promisedLoad = this._tryLoad(());
+             (this.$_promisedLoad = this._tryLoad());
   },
 
-  _tryLoad( : async function() {
+  _tryLoad : async function() {
     this._log('load');
     this._applyValues(this.$default);
     let values;
