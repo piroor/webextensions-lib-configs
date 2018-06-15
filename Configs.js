@@ -85,7 +85,7 @@ Configs.prototype = {
         (async () => {
           try {
             const lockedKeys = await browser.runtime.sendMessage({
-              type : 'Configs:request:locked'
+              type: 'Configs:getLockedKeys'
             });
             this.$log('load: successfully synchronized locked state');
             return lockedKeys;
@@ -140,32 +140,51 @@ Configs.prototype = {
         return;
       Object.defineProperty(this, aKey, {
         get: () => this.$lastValues[aKey],
-        set: (aValue) => {
-          if (this.$locked.has(aKey)) {
-            this.$log(`warning: ${aKey} is locked and not updated`);
-            return aValue;
-          }
-          if (JSON.stringify(aValue) == JSON.stringify(this.$lastValues[aKey]))
-            return aValue;
-          this.$log(`set: ${aKey} = ${aValue}`);
-          this.$lastValues[aKey] = aValue;
-          this.$notifyUpdated(aKey);
-          return aValue;
-        }
+        set: (aValue) => this.$setValue(aKey, aValue)
       });
     });
+  },
+
+  $setValue(aKey, aValue) {
+    if (this.$locked.has(aKey)) {
+      this.$log(`warning: ${aKey} is locked and not updated`);
+      return aValue;
+    }
+    if (JSON.stringify(aValue) == JSON.stringify(this.$lastValues[aKey]))
+      return aValue;
+    this.$log(`set: ${aKey} = ${aValue}`);
+    this.$lastValues[aKey] = aValue;
+
+    const update = {};
+    update[aKey] = aValue;
+    try {
+      browser.storage.local.set(update, () => {
+        this.$log('successfully saved', update);
+      });
+    }
+    catch(e) {
+      this.$log('save: failed', e);
+    }
+    try {
+      if (this.$syncKeys.includes(aKey))
+        browser.storage.sync.set(update, () => {
+          this.$log('successfully synced', update);
+        });
+    }
+    catch(e) {
+      this.$log('sync: failed', e);
+    }
+    return aValue;
   },
 
   $lock(aKey) {
     this.$log('locking: ' + aKey);
     this.$updateLocked(aKey, true);
-    this.$notifyUpdated(aKey);
   },
 
   $unlock(aKey) {
     this.$log('unlocking: ' + aKey);
     this.$updateLocked(aKey, false);
-    this.$notifyUpdated(aKey);
   },
 
   $updateLocked(aKey, aLocked) {
@@ -175,6 +194,11 @@ Configs.prototype = {
     else {
       this.$locked.delete(aKey);
     }
+    return this.$broadcast({
+      type:   'Configs:updateLocked',
+      key:    aKey,
+      locked: this.$locked.has(aKey)
+    });
   },
 
   $onMessage(aMessage, aSender) {
@@ -184,16 +208,11 @@ Configs.prototype = {
 
     this.$log(`onMessage: ${aMessage.type}`, aMessage, aSender);
     switch (aMessage.type) {
-      case 'Configs:request:locked':
-        return (async () => {
-          await this.$load();
-          return this.$locked.values();
-        })();
-        break;
+      case 'Configs:getLockedKeys':
+        return Promise.resolve(this.$locked.values());
 
-      case 'Configs:update':
+      case 'Configs:updateLocked':
         this.$updateLocked(aMessage.key, aMessage.locked);
-        this[aMessage.key] = aMessage.value;
         break;
     }
   },
@@ -217,41 +236,6 @@ Configs.prototype = {
         browser.tabs.sendMessage(aTab.id, aMessage, null)));
     }
     return await Promise.all(promises);
-  },
-  $notifyUpdated : async function(aKey) {
-    const value = this[aKey];
-    const locked = this.$locked.has(aKey);
-    this.$log(`broadcast updated config: ${aKey} = ${value} (locked: ${locked})`);
-    const updatedKey = {};
-    updatedKey[aKey] = value;
-    try {
-      browser.storage.local.set(updatedKey, () => {
-        this.$log('successfully saved', updatedKey);
-      });
-    }
-    catch(e) {
-      this.$log('save: failed', e);
-    }
-    try {
-      if (this.$syncKeys.includes(aKey)) {
-        try {
-          browser.storage.sync.set(updatedKey, () => {
-            this.$log('successfully synced', updatedKey);
-          });
-        }
-        catch(_e) {
-        }
-      }
-    }
-    catch(e) {
-      this.$log('sync: failed', e);
-    }
-    return this.$broadcast({
-      type  : 'Configs:updated',
-      key   : aKey,
-      value : value,
-      locked : locked
-    });
   },
   $notifyToObservers(aKey) {
     this.$observers.forEach(aObserver => {
