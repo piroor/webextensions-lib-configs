@@ -27,7 +27,7 @@ class Configs {
 
   $addObserver(aObserver) {
     if (!this._observers.has(aObserver))
-      this._observers.set(aObserver);
+      this._observers.add(aObserver);
   }
   $removeObserver(aObserver) {
     this._observers.delete(aObserver);
@@ -91,12 +91,12 @@ class Configs {
               type: 'Configs:getLockedKeys'
             });
             this._log('load: successfully synchronized locked state');
-            return lockedKeys;
+            return lockedKeys || [];
           }
           catch(e) {
             this._log('load: failed to synchronize locked state: ', String(e));
           }
-          return {};
+          return [];
         })()
       ]);
       this._log(`load: loaded for ${location.origin}:`, { localValues, managedValues, lockedKeys });
@@ -192,7 +192,7 @@ class Configs {
 
   _updateLocked(aKey, aLocked) {
     if (aLocked) {
-      this._locked.set(aKey, true);
+      this._locked.add(aKey);
     }
     else {
       this._locked.delete(aKey);
@@ -213,7 +213,7 @@ class Configs {
     this._log(`onMessage: ${aMessage.type}`, aMessage, aSender);
     switch (aMessage.type) {
       case 'Configs:getLockedKeys':
-        return Promise.resolve(this._locked.values());
+        return Promise.resolve(Array.from(this._locked.values()));
 
       case 'Configs:updateLocked':
         this._updateLocked(aMessage.key, aMessage.locked);
