@@ -6,9 +6,10 @@
 
 'use strict';
 
-function Configs(aDefaults, aOptions = { syncKeys: [] }) {
+function Configs(aDefaults, aOptions = { syncKeys: [], logger: null }) {
   this.$default = aDefaults;
   this.$logging = aOptions.logging || false;
+  this.$logger = aOptions.logger;
   this.$locked = new Set();
   this.$lastValues = {};
   this.$syncKeys = aOptions.localKeys ? 
@@ -35,8 +36,8 @@ Configs.prototype = {
       return;
 
     aMessage = `Configs ${aMessage}`;
-    if (typeof window.log === 'function')
-      log(aMessage, ...aArgs);
+    if (typeof this.$logger === 'function')
+      this.$logger(aMessage, ...aArgs);
     else
       console.log(aMessage, ...aArgs);
   },
