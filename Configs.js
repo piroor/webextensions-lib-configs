@@ -10,16 +10,16 @@
 class Configs {
 
   constructor(aDefaults, aOptions = { syncKeys: [], logger: null }) {
-  this.$default = aDefaults;
-  this._logging = aOptions.logging || false;
-  this.$logger = aOptions.logger;
-  this._locked = new Set();
-  this._lastValues = {};
-  this._observers = new Set();
-  this._syncKeys = aOptions.localKeys ? 
-    Object.keys(aDefaults).filter(x => !aOptions.localKeys.includes(x)) : 
-    (aOptions.syncKeys || []);
-  this.$loaded = this._load();
+    this.$default = aDefaults;
+    this._logging = aOptions.logging || false;
+    this.$logger = aOptions.logger;
+    this._locked = new Set();
+    this._lastValues = {};
+    this._observers = new Set();
+    this._syncKeys = aOptions.localKeys ?
+      Object.keys(aDefaults).filter(x => !aOptions.localKeys.includes(x)) :
+      (aOptions.syncKeys || []);
+    this.$loaded = this._load();
   }
 
   async $reset() {
