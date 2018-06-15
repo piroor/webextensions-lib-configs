@@ -9,7 +9,7 @@
 function Configs(aDefaults, aOptions = { syncKeys: [] }) {
   this.$default = aDefaults;
   this.$logging = aOptions.logging || false;
-  this.$locked = {};
+  this.$locked = new Set();
   this.$lastValues = {};
   this.$syncKeys = aOptions.localKeys ? 
     Object.keys(aDefaults).filter(x => !aOptions.localKeys.includes(x)) : 
@@ -19,22 +19,16 @@ function Configs(aDefaults, aOptions = { syncKeys: [] }) {
 Configs.prototype = {
   $reset : async function() {
     this.$applyValues(this.$default);
-    return this.$broadcast({
-      type : 'Configs:reseted'
-    });
   },
 
   $addObserver(aObserver) {
-    const index = this.$observers.indexOf(aObserver);
-    if (index < 0)
-      this.$observers.push(aObserver);
+    if (!this.$observers.has(aObserver))
+      this.$observers.set(aObserver);
   },
   $removeObserver(aObserver) {
-    const index = this.$observers.indexOf(aObserver);
-    if (index > -1)
-      this.$observers.splice(index, 1);
+    this.$observers.delete(aObserver);
   },
-  $observers : [],
+  $observers : new Set(),
 
   $log(aMessage, ...aArgs) {
     if (!this.$logging)
@@ -106,9 +100,8 @@ Configs.prototype = {
       values = Object.assign({}, localValues || {}, managedValues || {});
       this.$applyValues(values);
       this.$log('load: values are applied');
-      lockedKeys = Object.keys(lockedKeys || {});
       if (managedValues)
-        lockedKeys = lockedKeys.concat(Object.keys(managedValues));
+        lockedKeys = lockedKeys.concat(Array.from(managedValues.keys()));
       for (const key of lockedKeys) {
         this.$updateLocked(key, true);
       }
@@ -140,7 +133,7 @@ Configs.prototype = {
   },
   $applyValues(aValues) {
     Object.keys(aValues).forEach(aKey => {
-      if (aKey in this.$locked)
+      if (this.$locked.has(aKey))
         return;
       this.$lastValues[aKey] = aValues[aKey];
       if (aKey in this)
@@ -148,7 +141,7 @@ Configs.prototype = {
       Object.defineProperty(this, aKey, {
         get: () => this.$lastValues[aKey],
         set: (aValue) => {
-          if (aKey in this.$locked) {
+          if (this.$locked.has(aKey)) {
             this.$log(`warning: ${aKey} is locked and not updated`);
             return aValue;
           }
@@ -177,44 +170,24 @@ Configs.prototype = {
 
   $updateLocked(aKey, aLocked) {
     if (aLocked) {
-      this.$locked[aKey] = true;
+      this.$locked.set(aKey, true);
     }
     else {
-      delete this.$locked[aKey];
+      this.$locked.delete(aKey);
     }
   },
 
-  $onMessage(aMessage, aSender, aRespond) {
+  $onMessage(aMessage, aSender) {
     if (!aMessage ||
         typeof aMessage.type != 'string')
       return;
 
-    if (aMessage.type.indexOf('Configs:request:') == 0) {
-      this.$processMessage(aMessage, aSender).then(aRespond);
-      return true;
-    }
-    else {
-      this.$processMessage(aMessage, aSender);
-    }
-  },
-
-  $processMessage : async function(aMessage, aSender) {
     this.$log(`onMessage: ${aMessage.type}`, aMessage, aSender);
     switch (aMessage.type) {
-      case 'Configs:request:load':
-        return (async () => {
-          const values = await this.$load();
-          return {
-            values     : values,
-            lockedKeys : this.$locked
-          };
-        });
-        break;
-
       case 'Configs:request:locked':
         return (async () => {
           await this.$load();
-          return this.$locked;
+          return this.$locked.values();
         })();
         break;
 
@@ -222,9 +195,6 @@ Configs.prototype = {
         this.$updateLocked(aMessage.key, aMessage.locked);
         this[aMessage.key] = aMessage.value;
         break;
-
-      case 'Configs:request:reset':
-        return this.$reset();
     }
   },
 
@@ -250,7 +220,7 @@ Configs.prototype = {
   },
   $notifyUpdated : async function(aKey) {
     const value = this[aKey];
-    const locked = aKey in this.$locked;
+    const locked = this.$locked.has(aKey);
     this.$log(`broadcast updated config: ${aKey} = ${value} (locked: ${locked})`);
     const updatedKey = {};
     updatedKey[aKey] = value;
