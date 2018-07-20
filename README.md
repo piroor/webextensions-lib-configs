@@ -1,5 +1,7 @@
 # webextensions-lib-configs
 
+[![Build Status](https://travis-ci.org/piroor/webextensions-lib-configs.svg?branch=master)](https://travis-ci.org/piroor/webextensions-lib-configs)
+
 Provides ability to store/load configurations, on Firefox 52 and later.
 
 By the [bug 1197346](https://bugzilla.mozilla.org/show_bug.cgi?id=1197346), now we don't have to do inter-sandboxes comunication to read/write configuration values.
