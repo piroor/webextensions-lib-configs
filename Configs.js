@@ -104,7 +104,7 @@ class Configs {
       this._applyValues(values);
       this._log('load: values are applied');
       if (managedValues)
-        lockedKeys = lockedKeys.concat(Array.from(managedValues.keys()));
+        lockedKeys = lockedKeys.concat(Array.from(Object.keys(managedValues)));
       for (const key of lockedKeys) {
         this._updateLocked(key, true);
       }
