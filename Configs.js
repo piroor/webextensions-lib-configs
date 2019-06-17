@@ -161,7 +161,7 @@ class Configs {
     const update = {};
     update[aKey] = aValue;
     try {
-      browser.storage.local.set(update, () => {
+      browser.storage.local.set(update).then(() => {
         this._log('successfully saved', update);
       });
     }
@@ -170,7 +170,7 @@ class Configs {
     }
     try {
       if (this._syncKeys.includes(aKey))
-        browser.storage.sync.set(update, () => {
+        browser.storage.sync.set(update).then(() => {
           this._log('successfully synced', update);
         });
     }
