@@ -100,7 +100,7 @@ class Configs {
         })()
       ]);
       this._log(`load: loaded for ${location.origin}:`, { localValues, managedValues, lockedKeys });
-      values = Object.assign({}, localValues || {}, managedValues || {});
+      values = { ...(localValues || {}), ...(managedValues || {}) };
       this._applyValues(values);
       this._log('load: values are applied');
       if (managedValues)
