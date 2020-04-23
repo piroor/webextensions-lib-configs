@@ -149,7 +149,7 @@ configs.cache.addedItems = true;
    newEntries.push('added item');
    configs.entries = newEntries;
 
-   let newCache = Object.assign({}, configs.cache); // shallow clone
+   let newCache = { ...configs.cache }; // shallow clone
    newCache.addedItems = true;
    configs.cache = newCache;
 }
