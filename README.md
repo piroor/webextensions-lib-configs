@@ -1,6 +1,6 @@
 # webextensions-lib-configs
 
-[![Build Status](https://travis-ci.org/piroor/webextensions-lib-configs.svg?branch=master)](https://travis-ci.org/piroor/webextensions-lib-configs)
+[![Build Status](https://travis-ci.org/piroor/webextensions-lib-configs.svg?branch=trunk)](https://travis-ci.org/piroor/webextensions-lib-configs)
 
 Provides ability to store/load configurations, on Firefox 52 and later.
 
