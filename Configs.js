@@ -75,15 +75,31 @@ class Configs {
             this._log('load: skip managed storage');
             return null;
           }
-          try {
-            const managedValues = await browser.storage.managed.get();
-            this._log('load: successfully loaded managed storage');
-            return managedValues || null;
-          }
-          catch(e) {
-            this._log('load: failed to load managed storage: ', String(e));
-          }
-          return null;
+          let resolved = false;
+          return new Promise((resolve, reject) => {
+            // storage.managed.get() fails on options page in Thunderbird.
+            // The problem should be fixed by Thunderbird side.
+            browser.storage.managed.get().then(managedValue => {
+              if (resolved)
+                return;
+              resolved = true;
+              this._log('load: successfully loaded managed storage');
+              resolve(managedValues || null);
+            }).catch(error => {
+              if (resolved)
+                return;
+              resolved = true;
+              this._log('load: failed to load managed storage: ', String(error));
+              resolve(null);
+            });
+            setTimeout(() => {
+              if (resolved)
+                return;
+              resolved = true;
+              this._log('load: failed to load managed storage: timeout');
+              resolve(null);
+            }, 250);
+          });
         })(),
         (async () => {
           try {
