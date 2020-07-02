@@ -76,10 +76,10 @@ class Configs {
             return null;
           }
           let resolved = false;
-          return new Promise((resolve, reject) => {
+          return new Promise((resolve, _reject) => {
             // storage.managed.get() fails on options page in Thunderbird.
             // The problem should be fixed by Thunderbird side.
-            browser.storage.managed.get().then(managedValue => {
+            browser.storage.managed.get().then(managedValues => {
               if (resolved)
                 return;
               resolved = true;
