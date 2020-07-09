@@ -115,7 +115,7 @@ class Configs {
           return [];
         })()
       ]);
-      this._log(`load: loaded for ${location.origin}:`, { localValues, managedValues, lockedKeys });
+      this._log(`load: loaded:`, { localValues, managedValues, lockedKeys });
       values = { ...(localValues || {}), ...(managedValues || {}) };
       this._applyValues(values);
       this._log('load: values are applied');
