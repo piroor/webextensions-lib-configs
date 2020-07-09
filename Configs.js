@@ -14,6 +14,7 @@ class Configs {
     this.$logger = aOptions.logger;
     this._locked = new Set();
     this._lastValues = {};
+    this._updating = new Map();
     this._observers = new Set();
     this._syncKeys = aOptions.localKeys ?
       Object.keys(aDefaults).filter(x => !aOptions.localKeys.includes(x)) :
@@ -177,8 +178,20 @@ class Configs {
     const update = {};
     update[aKey] = aValue;
     try {
+      this._updating.set(aKey, aValue);
       browser.storage.local.set(update).then(() => {
         this._log('successfully saved', update);
+        setTimeout(() => {
+          if (!this._updating.has(aKey))
+            return;
+          // failsafe: on Thunderbird updates sometimes won't be notified to the page itself.
+          const changes = {};
+          changes[aKey] = {
+            oldValue: this[aKey],
+            newValue: aValue
+          };
+          this._onChanged(changes);
+        }, 250);
       });
     }
     catch(e) {
@@ -250,6 +263,7 @@ class Configs {
   }
 
   $notifyToObservers(aKey) {
+    this._updating.delete(aKey);
     for (const observer of this._observers) {
       if (typeof observer === 'function')
         observer(aKey);
