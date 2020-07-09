@@ -37,7 +37,7 @@ class Configs {
     if (!this._logging)
       return;
 
-    aMessage = `Configs ${aMessage}`;
+    aMessage = `Configs[${location.href}] ${aMessage}`;
     if (typeof this.$logger === 'function')
       this.$logger(aMessage, ...aArgs);
     else
@@ -242,6 +242,7 @@ class Configs {
   }
 
   _onChanged(aChanges) {
+    this._log('_onChanged', aChanges);
     for (const [key, change] of Object.entries(aChanges)) {
       this._lastValues[key] = change.newValue;
       this.$notifyToObservers(key);
