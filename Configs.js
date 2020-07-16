@@ -8,17 +8,20 @@
 
 // eslint-disable-next-line no-unused-vars
 class Configs {
-  constructor(aDefaults, aOptions = { syncKeys: [], logger: null }) {
+  constructor(
+    aDefaults,
+    { logging, logger, localKeys, syncKeys } = { syncKeys: [], logger: null }
+  ) {
     this.$default = aDefaults;
-    this._logging = aOptions.logging || false;
-    this.$logger = aOptions.logger;
+    this._logging = logging || false;
+    this.$logger = logger;
     this._locked = new Set();
     this._lastValues = {};
     this._updating = new Map();
     this._observers = new Set();
-    this._syncKeys = aOptions.localKeys ?
-      Object.keys(aDefaults).filter(x => !aOptions.localKeys.includes(x)) :
-      (aOptions.syncKeys || []);
+    this._syncKeys = localKeys ?
+      Object.keys(aDefaults).filter(x => !localKeys.includes(x)) :
+      (syncKeys || []);
     this.$loaded = this._load();
   }
 
@@ -56,10 +59,7 @@ class Configs {
     let values;
     try {
       this._log(`load: try load from storage on ${location.href}`);
-      // We cannot define constants and variables at a time...
-      // [const localValues, let managedValues, let lockedKeys] = await Promise.all([
-      // eslint-disable-next-line prefer-const
-      let [localValues, managedValues, lockedKeys] = await Promise.all([
+      const [localValues, managedValues, lockedKeys] = await Promise.all([
         (async () => {
           try {
             const localValues = await browser.storage.local.get(this.$default);
@@ -120,8 +120,11 @@ class Configs {
       values = { ...(localValues || {}), ...(managedValues || {}) };
       this._applyValues(values);
       this._log('load: values are applied');
-      if (managedValues)
-        lockedKeys = lockedKeys.concat(Array.from(Object.keys(managedValues)));
+      if (managedValues) {
+        const managedKeys = Object.keys(managedValues);
+        const unlockedKeys = new Set(managedKeys.filter(key => key.endsWith(':locked') && !managedValues[key]).map(key => key.replace(/:locked$/, '')));
+        lockedKeys.push(...managedKeys.filter(key => !unlockedKeys.has(key)));
+      }
       for (const key of lockedKeys) {
         this._updateLocked(key, true);
       }

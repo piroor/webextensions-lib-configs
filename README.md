@@ -159,6 +159,23 @@ configs.cache.addedItems = true;
 
 This library supports `storage.managed`. Configuration items which have any value in `storage.managed` are  treated as locked configuration and they become unchangable. For more details, see the [API documentation](https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/storage/managed).
 
+For providing default configs instead of completely managed locked configs, please use `:unlock` suffix for each key.
+If you define `:unlocked`-suffixed key with `false` value, the corresponding config will become unlocked, for example:
+
+```json
+{
+  "name": "...",
+  "description": "...",
+  "type": "storage",
+  "data":
+  {
+    "color": "#FF0000",
+    "color:locked", false // <= HERE! This makes "color" unlocked.
+  }
+}
+```
+
+
 ## Sync Storage
 
 This library supports [storage.sync](https://developer.mozilla.org/en-US/Add-ons/WebExtensions/API/storage/sync). To use it, set `syncKeys` in the optional second parameter of the `Configs` constructor to an array of the key names that should be synced:
