@@ -9,10 +9,10 @@
 // eslint-disable-next-line no-unused-vars
 class Configs {
   constructor(
-    aDefaults,
+    defaults,
     { logging, logger, localKeys, syncKeys } = { syncKeys: [], logger: null }
   ) {
-    this.$default = aDefaults;
+    this.$default = defaults;
     this._logging = logging || false;
     this.$logger = logger;
     this._locked = new Set();
@@ -20,7 +20,7 @@ class Configs {
     this._updating = new Map();
     this._observers = new Set();
     this._syncKeys = localKeys ?
-      Object.keys(aDefaults).filter(x => !localKeys.includes(x)) :
+      Object.keys(defaults).filter(x => !localKeys.includes(x)) :
       (syncKeys || []);
     this.$loaded = this._load();
   }
@@ -29,23 +29,23 @@ class Configs {
     this._applyValues(this.$default);
   }
 
-  $addObserver(aObserver) {
-    if (!this._observers.has(aObserver))
-      this._observers.add(aObserver);
+  $addObserver(observer) {
+    if (!this._observers.has(observer))
+      this._observers.add(observer);
   }
-  $removeObserver(aObserver) {
-    this._observers.delete(aObserver);
+  $removeObserver(observer) {
+    this._observers.delete(observer);
   }
 
-  _log(aMessage, ...aArgs) {
+  _log(message, ...args) {
     if (!this._logging)
       return;
 
-    aMessage = `Configs[${location.href}] ${aMessage}`;
+    message = `Configs[${location.href}] ${message}`;
     if (typeof this.$logger === 'function')
-      this.$logger(aMessage, ...aArgs);
+      this.$logger(message, ...args);
     else
-      console.log(aMessage, ...aArgs);
+      console.log(message, ...args);
   }
 
   _load() {
@@ -155,8 +155,8 @@ class Configs {
       throw e;
     }
   }
-  _applyValues(aValues) {
-    for (const [key, value] of Object.entries(aValues)) {
+  _applyValues(values) {
+    for (const [key, value] of Object.entries(values)) {
       if (this._locked.has(key))
         continue;
       this._lastValues[key] = value;
@@ -164,35 +164,35 @@ class Configs {
         continue;
       Object.defineProperty(this, key, {
         get: () => this._lastValues[key],
-        set: (aValue) => this._setValue(key, aValue)
+        set: (value) => this._setValue(key, value)
       });
     }
   }
 
-  _setValue(aKey, aValue) {
-    if (this._locked.has(aKey)) {
-      this._log(`warning: ${aKey} is locked and not updated`);
-      return aValue;
+  _setValue(key, value) {
+    if (this._locked.has(key)) {
+      this._log(`warning: ${key} is locked and not updated`);
+      return value;
     }
-    if (JSON.stringify(aValue) == JSON.stringify(this._lastValues[aKey]))
-      return aValue;
-    this._log(`set: ${aKey} = ${aValue}`);
-    this._lastValues[aKey] = aValue;
+    if (JSON.stringify(value) == JSON.stringify(this._lastValues[key]))
+      return value;
+    this._log(`set: ${key} = ${value}`);
+    this._lastValues[key] = value;
 
     const update = {};
-    update[aKey] = aValue;
+    update[key] = value;
     try {
-      this._updating.set(aKey, aValue);
+      this._updating.set(key, value);
       browser.storage.local.set(update).then(() => {
         this._log('successfully saved', update);
         setTimeout(() => {
-          if (!this._updating.has(aKey))
+          if (!this._updating.has(key))
             return;
           // failsafe: on Thunderbird updates sometimes won't be notified to the page itself.
           const changes = {};
-          changes[aKey] = {
-            oldValue: this[aKey],
-            newValue: aValue
+          changes[key] = {
+            oldValue: this[key],
+            newValue: value
           };
           this._onChanged(changes);
         }, 250);
@@ -202,7 +202,7 @@ class Configs {
       this._log('save: failed', e);
     }
     try {
-      if (this._syncKeys.includes(aKey))
+      if (this._syncKeys.includes(key))
         browser.storage.sync.set(update).then(() => {
           this._log('successfully synced', update);
         });
@@ -210,69 +210,69 @@ class Configs {
     catch(e) {
       this._log('sync: failed', e);
     }
-    return aValue;
+    return value;
   }
 
-  $lock(aKey) {
-    this._log('locking: ' + aKey);
-    this._updateLocked(aKey, true);
+  $lock(key) {
+    this._log('locking: ' + key);
+    this._updateLocked(key, true);
   }
 
-  $unlock(aKey) {
-    this._log('unlocking: ' + aKey);
-    this._updateLocked(aKey, false);
+  $unlock(key) {
+    this._log('unlocking: ' + key);
+    this._updateLocked(key, false);
   }
 
-  $isLocked(aKey) {
-    return this._locked.has(aKey);
+  $isLocked(key) {
+    return this._locked.has(key);
   }
 
-  _updateLocked(aKey, aLocked) {
-    if (aLocked) {
-      this._locked.add(aKey);
+  _updateLocked(key, locked) {
+    if (locked) {
+      this._locked.add(key);
     }
     else {
-      this._locked.delete(aKey);
+      this._locked.delete(key);
     }
     if (browser.runtime)
       browser.runtime.sendMessage({
         type:   'Configs:updateLocked',
-        key:    aKey,
-        locked: this._locked.has(aKey)
+        key:    key,
+        locked: this._locked.has(key)
       });
   }
 
-  _onMessage(aMessage, aSender) {
-    if (!aMessage ||
-        typeof aMessage.type != 'string')
+  _onMessage(message, sender) {
+    if (!message ||
+        typeof message.type != 'string')
       return;
 
-    this._log(`onMessage: ${aMessage.type}`, aMessage, aSender);
-    switch (aMessage.type) {
+    this._log(`onMessage: ${message.type}`, message, sender);
+    switch (message.type) {
       case 'Configs:getLockedKeys':
         return Promise.resolve(Array.from(this._locked.values()));
 
       case 'Configs:updateLocked':
-        this._updateLocked(aMessage.key, aMessage.locked);
+        this._updateLocked(message.key, message.locked);
         break;
     }
   }
 
-  _onChanged(aChanges) {
-    this._log('_onChanged', aChanges);
-    for (const [key, change] of Object.entries(aChanges)) {
+  _onChanged(changes) {
+    this._log('_onChanged', changes);
+    for (const [key, change] of Object.entries(changes)) {
       this._lastValues[key] = change.newValue;
       this.$notifyToObservers(key);
     }
   }
 
-  $notifyToObservers(aKey) {
-    this._updating.delete(aKey);
+  $notifyToObservers(key) {
+    this._updating.delete(key);
     for (const observer of this._observers) {
       if (typeof observer === 'function')
-        observer(aKey);
+        observer(key);
       else if (observer && typeof observer.onChangeConfig === 'function')
-        observer.onChangeConfig(aKey);
+        observer.onChangeConfig(key);
     }
   }
 };
