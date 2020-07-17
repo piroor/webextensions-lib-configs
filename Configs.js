@@ -12,6 +12,14 @@ class Configs {
     defaults,
     { logging, logger, localKeys, syncKeys } = { syncKeys: [], logger: null }
   ) {
+    this.$defaultLockedKeys = [];
+    for (const key of Object.keys(defaults)) {
+      if (!key.endsWith(':locked'))
+        continue;
+      if (defaults[key])
+        this.$defaultLockedKeys.push(key.replace(/:locked$/, ''));
+      delete defaults[key];
+    }
     this.$default = defaults;
     this._logging = logging || false;
     this.$logger = logger;
@@ -120,11 +128,17 @@ class Configs {
       values = { ...(localValues || {}), ...(managedValues || {}) };
       this._applyValues(values);
       this._log('load: values are applied');
-      lockedKeys.push(...Object.keys(this.$default).filter(key => key.endsWith(':locked') && this.$default[key]).map(key => key.replace(/:locked$/, '')));
+      lockedKeys.push(...this.$defaultLockedKeys);
       if (managedValues) {
-        const managedKeys = Object.keys(managedValues);
-        const unlockedKeys = new Set(managedKeys.filter(key => key.endsWith(':locked') && !managedValues[key]).map(key => key.replace(/:locked$/, '')));
-        lockedKeys.push(...managedKeys.filter(key => !unlockedKeys.has(key)));
+        const unlockedKeys = new Set();
+        for (const key of Object.keys(managedValues)) {
+          if (!key.endsWith(':locked'))
+            continue;
+          if (!managedValues[key])
+            unlockedKeys.add(key.replace(/:locked$/, ''));
+          delete managedValues[key];
+        }
+        lockedKeys.push(...Object.keys(managedValues).filter(key => !unlockedKeys.has(key)));
       }
       for (const key of new Set(lockedKeys)) {
         this._updateLocked(key, true);
