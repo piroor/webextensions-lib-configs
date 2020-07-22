@@ -126,8 +126,7 @@ class Configs {
       ]);
       this._log(`load: loaded:`, { localValues, managedValues, lockedKeys });
 
-      const lockedKeysSet = new Set(lockedKeys);
-      lockedKeysSet.add(...this.$defaultLockedKeys);
+      lockedKeys.push(...this.$defaultLockedKeys);
 
       const lockedValues = {};
       for (const key of this.$defaultLockedKeys) {
@@ -144,7 +143,7 @@ class Configs {
           delete managedValues[key];
         }
         const lockedManagedKeys = Object.keys(managedValues).filter(key => !unlockedKeys.has(key));
-        lockedKeysSet.add(...lockedManagedKeys);
+        lockedKeys.push(...lockedManagedKeys);
         for (const key of lockedManagedKeys) {
           lockedValues[key] = managedValues[key];
         }
@@ -154,7 +153,7 @@ class Configs {
       this._applyValues(values);
       this._log('load: values are applied');
 
-      for (const key of lockedKeysSet) {
+      for (const key of new Set(lockedKeys)) {
         this._updateLocked(key, true);
       }
       this._log('load: locked state is applied');
