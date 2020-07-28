@@ -12,10 +12,6 @@ class Configs {
     defaults,
     { logging, logger, localKeys, syncKeys } = { syncKeys: [], logger: null }
   ) {
-    // On Thunderbird, messages sent by me are unexpectedly notified to the listener registered by me.
-    // We need to ignore notifications sent by myself.
-    this.$instanceId = `${Date.now()}-${parseInt(Math.random() * 65000)}`;
-
     this.$defaultLockedKeys = [];
     for (const key of Object.keys(defaults)) {
       if (!key.endsWith(':locked'))
@@ -117,8 +113,7 @@ class Configs {
         (async () => {
           try {
             const lockedKeys = await browser.runtime.sendMessage({
-              type: 'Configs:getLockedKeys',
-              instanceId: this.$instanceId
+              type: 'Configs:getLockedKeys'
             });
             this._log('load: successfully synchronized locked state');
             return lockedKeys || [];
@@ -259,26 +254,25 @@ class Configs {
     return this._locked.has(key);
   }
 
-  _updateLocked(key, locked) {
+  _updateLocked(key, locked, { broadcast } = {}) {
     if (locked) {
       this._locked.add(key);
     }
     else {
       this._locked.delete(key);
     }
-    if (browser.runtime)
+    if (browser.runtime &&
+        broadcast !== false)
       browser.runtime.sendMessage({
         type:   'Configs:updateLocked',
         key:    key,
-        locked: this._locked.has(key),
-        instanceId: this.$instanceId
+        locked: this._locked.has(key)
       });
   }
 
   _onMessage(message, sender) {
     if (!message ||
-        typeof message.type != 'string' ||
-        message.instanceId == this.$instanceId)
+        typeof message.type != 'string')
       return;
 
     this._log(`onMessage: ${message.type}`, message, sender);
@@ -287,7 +281,7 @@ class Configs {
         return Promise.resolve(Array.from(this._locked.values()));
 
       case 'Configs:updateLocked':
-        this._updateLocked(message.key, message.locked);
+        this._updateLocked(message.key, message.locked, { broadcast: false });
         break;
     }
   }
