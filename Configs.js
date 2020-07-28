@@ -12,6 +12,10 @@ class Configs {
     defaults,
     { logging, logger, localKeys, syncKeys } = { syncKeys: [], logger: null }
   ) {
+    // On Thunderbird, messages sent by me are unexpectedly notified to the listener registered by me.
+    // We need to ignore notifications sent by myself.
+    this.$instanceId = `${Date.now()}-${parseInt(Math.random() * 65000)}`;
+
     this.$defaultLockedKeys = [];
     for (const key of Object.keys(defaults)) {
       if (!key.endsWith(':locked'))
@@ -113,7 +117,8 @@ class Configs {
         (async () => {
           try {
             const lockedKeys = await browser.runtime.sendMessage({
-              type: 'Configs:getLockedKeys'
+              type: 'Configs:getLockedKeys',
+              instanceId: this.$instanceId
             });
             this._log('load: successfully synchronized locked state');
             return lockedKeys || [];
@@ -265,13 +270,15 @@ class Configs {
       browser.runtime.sendMessage({
         type:   'Configs:updateLocked',
         key:    key,
-        locked: this._locked.has(key)
+        locked: this._locked.has(key),
+        instanceId: this.$instanceId
       });
   }
 
   _onMessage(message, sender) {
     if (!message ||
-        typeof message.type != 'string')
+        typeof message.type != 'string' ||
+        message.instanceId == this.$instanceId)
       return;
 
     this._log(`onMessage: ${message.type}`, message, sender);
