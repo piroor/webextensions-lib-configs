@@ -262,12 +262,17 @@ class Configs {
       this._locked.delete(key);
     }
     if (browser.runtime &&
-        broadcast !== false)
+        broadcast !== false) {
+      try {
       browser.runtime.sendMessage({
         type:   'Configs:updateLocked',
         key:    key,
         locked: this._locked.has(key)
       }).catch(_error => {});
+      }
+      catch(_error) {
+      }
+    }
   }
 
   _onMessage(message, sender) {
