@@ -154,7 +154,7 @@ class Configs {
       this._log('load: values are applied');
 
       for (const key of new Set(lockedKeys)) {
-        this._updateLocked(key, true);
+        this._updateLocked(key, true, { broadcast: false });
       }
       this._log('load: locked state is applied');
       browser.storage.onChanged.addListener(this._onChanged.bind(this));
