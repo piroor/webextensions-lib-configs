@@ -267,7 +267,7 @@ class Configs {
         type:   'Configs:updateLocked',
         key:    key,
         locked: this._locked.has(key)
-      });
+      }).catch(_error => {});
   }
 
   _onMessage(message, sender) {
