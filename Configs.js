@@ -264,11 +264,11 @@ class Configs {
     if (browser.runtime &&
         broadcast !== false) {
       try {
-      browser.runtime.sendMessage({
-        type:   'Configs:updateLocked',
-        key:    key,
-        locked: this._locked.has(key)
-      }).catch(_error => {});
+        browser.runtime.sendMessage({
+          type:   'Configs:updateLocked',
+          key:    key,
+          locked: this._locked.has(key)
+        }).catch(_error => {});
       }
       catch(_error) {
       }
