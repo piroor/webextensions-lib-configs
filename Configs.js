@@ -70,7 +70,7 @@ class Configs {
       const [localValues, managedValues, lockedKeys] = await Promise.all([
         (async () => {
           try {
-            const localValues = await browser.storage.local.get(this.$default);
+            const localValues = await browser.storage.local.get(null); // keys must be "null" to get only stored values
             this._log('load: successfully loaded local storage');
             return localValues;
           }
