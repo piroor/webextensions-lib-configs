@@ -103,13 +103,13 @@ class Configs {
             // storage.managed.get() fails on options page in Thunderbird.
             // The problem should be fixed by Thunderbird side.
             if (window.messenger) {
-                setTimeout(() => {
-                  if (resolved)
-                    return;
-                  resolved = true;
-                  this._log('load: failed to load managed storage: timeout');
-                  resolve(null);
-                }, 250);
+              setTimeout(() => {
+                if (resolved)
+                  return;
+                resolved = true;
+                this._log('load: failed to load managed storage: timeout');
+                resolve(null);
+              }, 250);
             }
           });
         })(),
