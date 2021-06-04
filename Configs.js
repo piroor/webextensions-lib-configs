@@ -21,7 +21,8 @@ class Configs {
       delete defaults[key];
     }
     this.$default = defaults;
-    this._logging = logging || false;
+    this.$logging = logging || false;
+    this.$logs = [];
     this.$logger = logger;
     this._locked = new Set();
     this._lastValues = {};
@@ -46,10 +47,12 @@ class Configs {
   }
 
   _log(message, ...args) {
-    if (!this._logging)
+    message = `Configs[${location.href}] ${message}`;
+    this.$logs = this.$logs.slice(-1000);
+
+    if (!this.$logging)
       return;
 
-    message = `Configs[${location.href}] ${message}`;
     if (typeof this.$logger === 'function')
       this.$logger(message, ...args);
     else
