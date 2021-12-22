@@ -10,7 +10,7 @@
 class Configs {
   constructor(
     defaults,
-    { logging, logger, localKeys, syncKeys } = { syncKeys: [], logger: null }
+    { logging, logger, localKeys, syncKeys, standalone } = { syncKeys: [], logger: null }
   ) {
     this.$defaultLockedKeys = [];
     for (const key of Object.keys(defaults)) {
@@ -24,6 +24,7 @@ class Configs {
     this.$logging = logging || false;
     this.$logs = [];
     this.$logger = logger;
+    this.standalone = standalone || false;
     this._locked = new Set();
     this._lastValues = {};
     this._updating = new Map();
@@ -193,7 +194,9 @@ class Configs {
       }
       this._log('load: locked state is applied');
       browser.storage.onChanged.addListener(this._onChanged.bind(this));
-      if (this._syncKeys || this._syncKeys.length > 0) {
+      if (!this.standalone &&
+          (this._syncKeys ||
+           this._syncKeys.length > 0)) {
         try {
           browser.storage.sync.get(this._syncKeys).then(syncedValues => {
             this._log('load: successfully loaded sync storage');
@@ -264,7 +267,7 @@ class Configs {
       this._log('save: failed', e);
     }
     try {
-      if (this._syncKeys.includes(key))
+      if (!this.standalone && this._syncKeys.includes(key))
         browser.storage.sync.set(update).then(() => {
           this._log('successfully synced', update);
         });
