@@ -117,33 +117,51 @@ class Configs {
             this._log('load: skip managed storage');
             return null;
           }
-          let resolved = false;
-          return new Promise((resolve, _reject) => {
-            browser.storage.managed.get().then(managedValues => {
-              if (resolved)
-                return;
-              resolved = true;
-              this._log('load: successfully loaded managed storage');
-              resolve(managedValues || null);
-            }).catch(error => {
-              if (resolved)
-                return;
-              resolved = true;
-              this._log('load: failed to load managed storage: ', String(error));
-              resolve(null);
-            });
+          return new Promise(async (resolve, _reject) => {
+            const loadManagedStorage = () => {
+              let resolved = false;
+              return new Promise((resolve, reject) => {
+                browser.storage.managed.get().then(managedValues => {
+                  if (resolved)
+                    return;
+                  resolved = true;
+                  this._log('load: successfully loaded managed storage');
+                  resolve(managedValues || null);
+                }).catch(error => {
+                  if (resolved)
+                    return;
+                  resolved = true;
+                  this._log('load: failed to load managed storage: ', String(error));
+                  reject(error);
+                });
 
-            // storage.managed.get() fails on options page in Thunderbird.
-            // The problem should be fixed by Thunderbird side.
-            if (window.messenger) {
-              setTimeout(() => {
-                if (resolved)
-                  return;
-                resolved = true;
-                this._log('load: failed to load managed storage: timeout');
-                resolve(null);
-              }, 250);
+                // storage.managed.get() fails on options page in Thunderbird.
+                // The problem should be fixed by Thunderbird side.
+                if (window.messenger) {
+                  setTimeout(() => {
+                    if (resolved)
+                      return;
+                    resolved = true;
+                    this._log('load: failed to load managed storage: timeout');
+                    reject(new Error('timeout'));
+                  }, 250);
+                }
+              });
+            };
+
+            for (let i = 0, maxi = 10; i < maxi; i++) {
+              try {
+                const result = await loadManagedStorage();
+                resolve(result);
+                return;
+              }
+              catch(error) {
+                console.log('failed to load managed storage ', error);
+              }
+              await new Promise(resolve => setTimeout(resolve, 250));
             }
+            console.log('failed to load managed storage with 10 times retly');
+            resolve(null);
           });
         })(),
         (async () => {
