@@ -154,6 +154,11 @@ class Configs {
                 return;
               }
               catch(error) {
+                if (error.message != 'timeout') {
+                  console.log('managed storage is not provided');
+                  resolve(null);
+                  return;
+                }
                 console.log('failed to load managed storage ', error);
               }
               await new Promise(resolve => setTimeout(resolve, 250));
