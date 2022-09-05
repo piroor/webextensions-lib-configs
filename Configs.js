@@ -37,8 +37,14 @@ class Configs {
     this.$loaded = this._load();
   }
 
-  async $reset() {
-    this._applyValues(this.$default);
+  async $reset(key) {
+    if (!key)
+      return this._applyValues(this.$default);
+
+    if (!(key in this.$default))
+      throw new Error(`failed to reset unknown key: ${key}`);
+
+    this[key] = this.$default[key];
   }
 
   $addLocalLoadedObserver(observer) {
