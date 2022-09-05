@@ -20,7 +20,10 @@ class Configs {
         this.$defaultLockedKeys.push(key.replace(/:locked$/, ''));
       delete defaults[key];
     }
-    this.$default = defaults;
+    this.$default = {
+      ...defaults,
+      __userValeusSameToDefaultAreCleared: false,
+    };
     this.$logging = logging || false;
     this.$logs = [];
     this.$logger = logger;
@@ -31,13 +34,16 @@ class Configs {
     this._observers = new Set();
     this._changedObservers = new Set();
     this._localLoadedObservers = new Set();
-    this._syncKeys = localKeys ?
-      Object.keys(defaults).filter(x => !localKeys.includes(x)) :
-      (syncKeys || []);
+    this._syncKeys = [
+      ...(localKeys ?
+        Object.keys(defaults).filter(x => !localKeys.includes(x)) :
+        (syncKeys || [])),
+      '__userValeusSameToDefaultAreCleared',
+    ];
     this.$loaded = this._load();
   }
 
-  async $reset(key) {
+  $reset(key) {
     if (!key)
       return this._applyValues(this.$default);
 
@@ -47,19 +53,22 @@ class Configs {
     this._setValue(key, this.$default[key], true);
   }
 
-  async $setDefaultValue(key, value) {
+  $cleanUp() {
+    for (const [key, defaultValue] of Object.entries(this.$default)) {
+      if (JSON.stringify(this[key]) == JSON.stringify(defaultValue))
+        this.$reset(key);
+    }
+  }
+
+  $setDefaultValue(key, value) {
     if (!key)
       throw new Error(`missing key for default value ${value}`);
 
     if (!(key in this.$default))
       throw new Error(`failed to set default value for unknown key: ${key}`);
 
-    const stringified = JSON.stringify(this[key]);
-    const shouldReset = JSON.stringify(this.$default[key]) == stringified || JSON.stringify(value) == stringified;
-
     this.$default[key] = value;
-
-    if (shouldReset)
+    if (JSON.stringify(value) == JSON.stringify(this[key]))
       this.$reset(key);
   }
 
@@ -256,6 +265,12 @@ class Configs {
         }
       }
       browser.runtime.onMessage.addListener(this._onMessage.bind(this));
+
+      if (!this.__userValeusSameToDefaultAreCleared) {
+        this.$cleanUp();
+        this.__userValeusSameToDefaultAreCleared = true;
+      }
+
       return values;
     }
     catch(e) {
