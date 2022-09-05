@@ -266,38 +266,53 @@ class Configs {
       this._log(`warning: ${key} is locked and not updated`);
       return value;
     }
-    if (JSON.stringify(value) == JSON.stringify(this._lastValues[key]))
+    const stringified = JSON.stringify(value);
+    if (stringified == JSON.stringify(this._lastValues[key]))
       return value;
-    this._log(`set: ${key} = ${value}`);
+    const shouldReset = stringified == JSON.stringify(this.$default[key]);
+    this._log(`set: ${key} = ${value}${shouldReset ? ' (reset to default)' : ''}`);
     this._lastValues[key] = value;
 
     const update = {};
     update[key] = value;
     try {
       this._updating.set(key, value);
-      browser.storage.local.set(update).then(() => {
-        this._log('successfully saved', update);
-        setTimeout(() => {
-          if (!this._updating.has(key))
-            return;
-          // failsafe: on Thunderbird updates sometimes won't be notified to the page itself.
-          const changes = {};
-          changes[key] = {
-            oldValue: this[key],
-            newValue: value
-          };
-          this._onChanged(changes);
-        }, 250);
-      });
+      const updated = shouldReset ?
+        browser.storage.local.remove([key]).then(() => {
+          this._log('local: successfully removed ', key);
+        }) :
+        browser.storage.local.set(update).then(() => {
+          this._log('local: successfully saved ', update);
+        });
+      updated
+        .then(() => {
+          setTimeout(() => {
+            if (!this._updating.has(key))
+              return;
+            // failsafe: on Thunderbird updates sometimes won't be notified to the page itself.
+            const changes = {};
+            changes[key] = {
+              oldValue: this[key],
+              newValue: value
+            };
+            this._onChanged(changes);
+          }, 250);
+        });
     }
     catch(e) {
       this._log('save: failed', e);
     }
     try {
-      if (this.sync && this._syncKeys.includes(key))
-        browser.storage.sync.set(update).then(() => {
-          this._log('successfully synced', update);
-        });
+      if (this.sync && this._syncKeys.includes(key)) {
+        if (shouldReset)
+          browser.storage.sync.remove([key]).then(() => {
+            this._log('sync: successfully removed', update);
+          });
+        else
+          browser.storage.sync.set(update).then(() => {
+            this._log('sync: successfully synced', update);
+          });
+      }
     }
     catch(e) {
       this._log('sync: failed', e);
