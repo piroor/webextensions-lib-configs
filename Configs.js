@@ -44,7 +44,7 @@ class Configs {
     if (!(key in this.$default))
       throw new Error(`failed to reset unknown key: ${key}`);
 
-    this[key] = this.$default[key];
+    this._setValue(key, this.$default[key], true);
   }
 
   $addLocalLoadedObserver(observer) {
@@ -261,14 +261,16 @@ class Configs {
     }
   }
 
-  _setValue(key, value) {
+  _setValue(key, value, force = false) {
     if (this._locked.has(key)) {
       this._log(`warning: ${key} is locked and not updated`);
       return value;
     }
+
     const stringified = JSON.stringify(value);
-    if (stringified == JSON.stringify(this._lastValues[key]))
+    if (stringified == JSON.stringify(this._lastValues[key]) && !force)
       return value;
+
     const shouldReset = stringified == JSON.stringify(this.$default[key]);
     this._log(`set: ${key} = ${value}${shouldReset ? ' (reset to default)' : ''}`);
     this._lastValues[key] = value;
