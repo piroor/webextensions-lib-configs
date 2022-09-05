@@ -22,7 +22,7 @@ class Configs {
     }
     this.$default = {
       ...defaults,
-      __userValeusSameToDefaultAreCleared: false,
+      __ConfigsMigration__userValeusSameToDefaultAreCleared: false,
     };
     this.$logging = logging || false;
     this.$logs = [];
@@ -38,7 +38,7 @@ class Configs {
       ...(localKeys ?
         Object.keys(defaults).filter(x => !localKeys.includes(x)) :
         (syncKeys || [])),
-      '__userValeusSameToDefaultAreCleared',
+      '__ConfigsMigration__userValeusSameToDefaultAreCleared',
     ];
     this.$loaded = this._load();
   }
@@ -266,9 +266,9 @@ class Configs {
       }
       browser.runtime.onMessage.addListener(this._onMessage.bind(this));
 
-      if (!this.__userValeusSameToDefaultAreCleared) {
+      if (!this.__ConfigsMigration__userValeusSameToDefaultAreCleared) {
         this.$cleanUp();
-        this.__userValeusSameToDefaultAreCleared = true;
+        this.__ConfigsMigration__userValeusSameToDefaultAreCleared = true;
       }
 
       return values;
