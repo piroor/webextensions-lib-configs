@@ -54,7 +54,8 @@ class Configs {
     if (!(key in this.$default))
       throw new Error(`failed to set default value for unknown key: ${key}`);
 
-    const shouldReset = JSON.stringify(this[key]) == JSON.stringify(this.$default[key]);
+    const stringified = JSON.stringify(this[key]);
+    const shouldReset = JSON.stringify(this.$default[key]) == stringified || JSON.stringify(value) == stringified;
 
     this.$default[key] = value;
 
