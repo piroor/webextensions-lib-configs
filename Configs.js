@@ -47,6 +47,21 @@ class Configs {
     this._setValue(key, this.$default[key], true);
   }
 
+  async $setDefaultValue(key, value) {
+    if (!key)
+      throw new Error(`missing key for default value ${value}`);
+
+    if (!(key in this.$default))
+      throw new Error(`failed to set default value for unknown key: ${key}`);
+
+    const shouldReset = JSON.stringify(this[key]) == JSON.stringify(this.$default[key]);
+
+    this.$default[key] = value;
+
+    if (shouldReset)
+      this.$reset(key);
+  }
+
   $addLocalLoadedObserver(observer) {
     if (!this._localLoadedObservers.has(observer))
       this._localLoadedObservers.add(observer);
