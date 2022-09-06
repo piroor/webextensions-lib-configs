@@ -44,8 +44,12 @@ class Configs {
   }
 
   $reset(key) {
-    if (!key)
-      return this._applyValues(this.$default);
+    if (!key) {
+      for (const key of Object.keys(this.$default)) {
+        this.$reset(key);
+      }
+      return;
+    }
 
     if (!(key in this.$default))
       throw new Error(`failed to reset unknown key: ${key}`);
