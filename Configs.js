@@ -412,7 +412,10 @@ class Configs {
     this._log('_onChanged', changes);
     const observers = [...this._observers, ...this._changedObservers];
     for (const [key, change] of Object.entries(changes)) {
-      this._lastValues[key] = change.newValue;
+      if ('newValue' in change)
+        this._lastValues[key] = change.newValue;
+      else
+        this._lastValues[key] = JSON.parse(JSON.stringify(this.$default[key]));
       this._updating.delete(key);
       this.$notifyToObservers(key, change.newValue, observers, 'onChangeConfig');
     }
