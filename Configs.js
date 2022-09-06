@@ -54,7 +54,7 @@ class Configs {
     if (!(key in this.$default))
       throw new Error(`failed to reset unknown key: ${key}`);
 
-    this._setValue(key, this.$default[key], true);
+    this._setValue(key, JSON.parse(JSON.stringify(this.$default[key])), true);
   }
 
   $cleanUp() {
@@ -71,7 +71,7 @@ class Configs {
     if (!(key in this.$default))
       throw new Error(`failed to set default value for unknown key: ${key}`);
 
-    this.$default[key] = value;
+    this.$default[key] = JSON.parse(JSON.stringify(value));
     if (JSON.stringify(value) == JSON.stringify(this[key]))
       this.$reset(key);
   }
