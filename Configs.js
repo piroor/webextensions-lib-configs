@@ -22,7 +22,7 @@ class Configs {
     for (const key of Object.keys(this._defaultValues)) {
       Object.defineProperty(this.$default, key, {
         get: () => this._defaultValues[key],
-        set: (value) => this.$setDefaultValue(key, value),
+        set: (value) => this._setDefaultValue(key, value),
         enumerable: true,
       });
     }
@@ -77,7 +77,7 @@ class Configs {
     }
   }
 
-  $setDefaultValue(key, value) {
+  _setDefaultValue(key, value) {
     if (!key)
       throw new Error(`missing key for default value ${value}`);
 
