@@ -23,6 +23,7 @@ class Configs {
       Object.defineProperty(this.$default, key, {
         get: () => this._defaultValues[key],
         set: (value) => this.$setDefaultValue(key, value),
+        enumerable: true,
       });
     }
 
@@ -305,7 +306,8 @@ class Configs {
         continue;
       Object.defineProperty(this, key, {
         get: () => this._lastValues[key],
-        set: (value) => this._setValue(key, value)
+        set: (value) => this._setValue(key, value),
+        enumerable: true,
       });
     }
   }
