@@ -13,6 +13,19 @@ class Configs {
     { logging, logger, localKeys, syncKeys, sync } = { syncKeys: [], logger: null }
   ) {
     this.$defaultLockedKeys = [];
+
+    this._defaultValues = {
+      ...this._clone(defaults),
+      __ConfigsMigration__userValeusSameToDefaultAreCleared: false,
+    };
+    this.$default = {};
+    for (const key of Object.keys(this._defaultValues)) {
+      Object.defineProperty(this.$default, key, {
+        get: () => this._defaultValues[key],
+        set: (value) => this.$setDefaultValue(key, value),
+      });
+    }
+
     for (const key of Object.keys(defaults)) {
       if (!key.endsWith(':locked'))
         continue;
@@ -20,16 +33,13 @@ class Configs {
         this.$defaultLockedKeys.push(key.replace(/:locked$/, ''));
       delete defaults[key];
     }
-    this.$default = {
-      ...defaults,
-      __ConfigsMigration__userValeusSameToDefaultAreCleared: false,
-    };
     this.$logging = logging || false;
     this.$logs = [];
     this.$logger = logger;
     this.sync = sync === undefined ? true : !!sync;
     this._locked = new Set();
     this._lastValues = {};
+    this._fetchedValues = {};
     this._updating = new Map();
     this._observers = new Set();
     this._changedObservers = new Set();
@@ -45,21 +55,23 @@ class Configs {
 
   $reset(key) {
     if (!key) {
-      for (const key of Object.keys(this.$default)) {
+      for (const key of Object.keys(this._defaultValues)) {
         this.$reset(key);
       }
       return;
     }
 
-    if (!(key in this.$default))
+    if (!(key in this._defaultValues))
       throw new Error(`failed to reset unknown key: ${key}`);
 
-    this._setValue(key, JSON.parse(JSON.stringify(this.$default[key])), true);
+    this._setValue(key, this._defaultValues[key], true);
   }
 
   $cleanUp() {
-    for (const [key, defaultValue] of Object.entries(this.$default)) {
-      if (JSON.stringify(this[key]) == JSON.stringify(defaultValue))
+    for (const [key, defaultValue] of Object.entries(this._defaultValues)) {
+      if (!(key in this._fetchedValues))
+        continue;
+      if (JSON.stringify(this._fetchedValues[key]) == JSON.stringify(defaultValue))
         this.$reset(key);
     }
   }
@@ -68,11 +80,12 @@ class Configs {
     if (!key)
       throw new Error(`missing key for default value ${value}`);
 
-    if (!(key in this.$default))
+    if (!(key in this._defaultValues))
       throw new Error(`failed to set default value for unknown key: ${key}`);
 
-    this.$default[key] = JSON.parse(JSON.stringify(value));
-    if (JSON.stringify(value) == JSON.stringify(this[key]))
+    this._defaultValues[key] = this._clone(value);
+    if (!(key in this._fetchedValues) ||
+        JSON.stringify(this._defaultValues[key]) == JSON.stringify(this._fetchedValues[key]))
       this.$reset(key);
   }
 
@@ -127,7 +140,7 @@ class Configs {
 
   async _tryLoad() {
     this._log('load');
-    this._applyValues(this.$default);
+    this._applyValues(this._defaultValues);
     let values;
     try {
       this._log(`load: try load from storage on ${location.href}`);
@@ -222,7 +235,7 @@ class Configs {
 
       const lockedValues = {};
       for (const key of this.$defaultLockedKeys) {
-        lockedValues[key] = this.$default[key];
+        lockedValues[key] = this._defaultValues[key];
       }
 
       if (managedValues) {
@@ -242,6 +255,7 @@ class Configs {
       }
 
       values = { ...(managedValues || {}), ...(localValues || {}), ...lockedValues };
+      this._fetchedValues = this._clone(values);
       this._applyValues(values);
       this._log('load: values are applied');
 
@@ -306,7 +320,7 @@ class Configs {
     if (stringified == JSON.stringify(this._lastValues[key]) && !force)
       return value;
 
-    const shouldReset = stringified == JSON.stringify(this.$default[key]);
+    const shouldReset = stringified == JSON.stringify(this._defaultValues[key]);
     this._log(`set: ${key} = ${value}${shouldReset ? ' (reset to default)' : ''}`);
     this._lastValues[key] = value;
 
@@ -316,9 +330,11 @@ class Configs {
       this._updating.set(key, value);
       const updated = shouldReset ?
         browser.storage.local.remove([key]).then(() => {
+          delete this._fetchedValues[key];
           this._log('local: successfully removed ', key);
         }) :
         browser.storage.local.set(update).then(() => {
+          this._fetchedValues[key] = this._clone(value);
           this._log('local: successfully saved ', update);
         });
       updated
@@ -412,10 +428,14 @@ class Configs {
     this._log('_onChanged', changes);
     const observers = [...this._observers, ...this._changedObservers];
     for (const [key, change] of Object.entries(changes)) {
-      if ('newValue' in change)
+      if ('newValue' in change) {
+        this._fetchedValues[key] = this._clone(change.newValue);
         this._lastValues[key] = change.newValue;
-      else
-        this._lastValues[key] = JSON.parse(JSON.stringify(this.$default[key]));
+      }
+      else {
+        delete this._fetchedValues[key];
+        this._lastValues[key] = this._clone(this._defaultValues[key]);
+      }
       this._updating.delete(key);
       this.$notifyToObservers(key, change.newValue, observers, 'onChangeConfig');
     }
@@ -428,5 +448,9 @@ class Configs {
       else if (observer && typeof observer[observerMethod] === 'function')
         observer[observerMethod](key, value);
     }
+  }
+
+  _clone(value) {
+    return JSON.parse(JSON.stringify(value));
   }
 };
