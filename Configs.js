@@ -122,11 +122,11 @@ class Configs {
   }
 
   _log(message, ...args) {
-    message = `Configs[${location.href}] ${message}`;
-    this.$logs = this.$logs.slice(-1000);
-
     if (!this.$logging)
       return;
+
+    message = `Configs[${location.href}] ${message}`;
+    this.$logs = this.$logs.slice(-1000);
 
     if (typeof this.$logger === 'function')
       this.$logger(message, ...args);
