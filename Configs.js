@@ -200,7 +200,7 @@ class Configs {
               try {
                 const result = await loadManagedStorage();
                 // On old versions Firefox and Thunderbird, a value with
-                // RG_MULTI_SZ type is always delivered as a simple string,
+                // REG_MULTI_SZ type is always delivered as a simple string,
                 // thus we need to parse it by self.
                 for (const [key, value] of Object.entries(result)) {
                   const defaultValue = this._defaultValues[key];
