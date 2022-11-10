@@ -199,6 +199,27 @@ class Configs {
             for (let i = 0, maxi = 10; i < maxi; i++) {
               try {
                 const result = await loadManagedStorage();
+                // On old versions Firefox and Thunderbird, a value with
+                // RG_MULTI_SZ type is always delivered as a simple string,
+                // thus we need to parse it by self.
+                for (const [key, value] of Object.entries(result)) {
+                  const defaultValue = this._defaultValues[key];
+                  if (typeof value != 'string')
+                    continue;
+
+                  const trimmed = value.trim();
+                  if (Array.isArray(defaultValue)) {
+                    result[key] = (trimmed.startsWith('[') && trimmed.endsWith(']')) ?
+                      JSON.parse(value) :
+                      value.split(',');
+                  }
+                  else if (defaultValue &&
+                           typeof defaultValue == 'object' &&
+                           trimmed.startsWith('{') &&
+                           trimmed.endsWith('}')) {
+                    result[key] = JSON.parse(value);
+                  }
+                }
                 resolve(result);
                 return;
               }
