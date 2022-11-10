@@ -211,7 +211,9 @@ class Configs {
                   if (Array.isArray(defaultValue)) {
                     result[key] = (trimmed.startsWith('[') && trimmed.endsWith(']')) ?
                       JSON.parse(value) :
-                      value.split(',');
+                      trimmed.includes('\n') ?
+                        value.split('\n') :
+                        value.split(',');
                   }
                   else if (defaultValue &&
                            typeof defaultValue == 'object' &&
