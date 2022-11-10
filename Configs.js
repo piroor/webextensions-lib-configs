@@ -212,14 +212,14 @@ class Configs {
                     result[key] = (trimmed.startsWith('[') && trimmed.endsWith(']')) ?
                       JSON.parse(value) :
                       trimmed.includes('\n') ?
-                        value.split('\n') :
-                        value.split(',');
+                        trimmed.split('\n') :
+                        trimmed.split(',');
                   }
                   else if (defaultValue &&
                            typeof defaultValue == 'object' &&
                            trimmed.startsWith('{') &&
                            trimmed.endsWith('}')) {
-                    result[key] = JSON.parse(value);
+                    result[key] = JSON.parse(trimmed);
                   }
                 }
                 resolve(result);
