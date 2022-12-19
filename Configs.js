@@ -263,22 +263,27 @@ class Configs {
       }
 
       if (managedValues) {
-        const unlockedKeys = new Set();
-        for (const key of Object.keys(managedValues)) {
+        const defaultKeys = new Set();
+        for (const [key, locked] of Object.entries(managedValues)) {
           if (!key.endsWith(':locked'))
             continue;
-          if (!managedValues[key])
-            unlockedKeys.add(key.replace(/:locked$/, ''));
+          if (!locked)
+            defaultKeys.add(key.replace(/:locked$/, ''));
           delete managedValues[key];
         }
-        const lockedManagedKeys = Object.keys(managedValues).filter(key => !unlockedKeys.has(key));
-        lockedKeys.push(...lockedManagedKeys);
-        for (const key of lockedManagedKeys) {
-          lockedValues[key] = managedValues[key];
+        for (const [key, value] of Object.entries(managedValues)) {
+          if (defaultKeys.has(key)) {
+            this._defaultValues[key] = value;
+            delete managedValues[key];
+          }
+          else {
+            lockedValues[key] = value;
+            lockedKeys.push(key);
+          }
         }
       }
 
-      values = { ...(managedValues || {}), ...(localValues || {}), ...lockedValues };
+      values = { ...(localValues || {}), ...lockedValues };
       this._fetchedValues = this._clone(values);
       this._applyValues(values);
       this._log('load: values are applied');
