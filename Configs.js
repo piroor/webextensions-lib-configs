@@ -6,41 +6,73 @@
 
 'use strict';
 
+/*
+There are multiple level values:
+
+(higher priority)
+ * [default] locked managed values (given via GPO or policies.json)
+ * [default] locked default values (given to the constructor)
+ * [user] locked user values (given via API)
+   => [default] it should fallback to the default value if there is no user value
+ * [user] user values (local storage)
+ * [default] non-locked managed values (given via GPO or policies.json)
+ * [default] overridden default values (given via API)
+ * [default] built-in default values (given to the constructor)
+(lower priority)
+
+Only values different from [default] are stored and synchronized.
+*/
+
 // eslint-disable-next-line no-unused-vars
 class Configs {
   constructor(
     defaults,
     { logging, logger, localKeys, syncKeys, sync } = { syncKeys: [], logger: null }
   ) {
-    this.$defaultLockedKeys = [];
-
     this._defaultValues = {
       ...this._clone(defaults),
       __ConfigsMigration__userValeusSameToDefaultAreCleared: false,
     };
+    this._lockedDefaultKeys = new Set();
+
+    this._managedValues = {};
+    this._lockedManagedKeys = new Set();
+
+    this._userValues = {};
+    this._lockedUserKeys = new Set();
+
+    this._fetchedValues = {};
+
     this.$default = {};
+    this.$all = {};
+
     for (const key of Object.keys(this._defaultValues)) {
       Object.defineProperty(this.$default, key, {
-        get: () => this._defaultValues[key],
+        get: () => this._getDefaultValue(key),
         set: (value) => this._setDefaultValue(key, value),
         enumerable: true,
       });
+      const description = {
+        get: () => this._getValue(key),
+        set: (value) => this._setValue(key, value),
+        enumerable: true,
+      };
+      Object.defineProperty(this, key, description);
+      Object.defineProperty(this.$all, key, description);
     }
 
-    for (const key of Object.keys(defaults)) {
+    for (const [key, locked] of Object.entries(defaults)) {
       if (!key.endsWith(':locked'))
         continue;
-      if (defaults[key])
-        this.$defaultLockedKeys.push(key.replace(/:locked$/, ''));
+      if (locked)
+        this._lockedDefaultKeys.add(key.replace(/:locked$/, ''));
       delete defaults[key];
     }
+
     this.$logging = logging || false;
     this.$logs = [];
     this.$logger = logger;
     this.sync = sync === undefined ? true : !!sync;
-    this._locked = new Set();
-    this._lastValues = {};
-    this._fetchedValues = {};
     this._updating = new Map();
     this._observers = new Set();
     this._changedObservers = new Set();
@@ -54,7 +86,7 @@ class Configs {
     this.$loaded = this._load();
   }
 
-  $reset(key) {
+  $reset(key, { broadcast } = {}) {
     if (!key) {
       for (const key of Object.keys(this._defaultValues)) {
         this.$reset(key);
@@ -62,32 +94,63 @@ class Configs {
       return;
     }
 
-    if (!(key in this._defaultValues))
+    if (!this._defaultValues.hasOwnProperty(key))
       throw new Error(`failed to reset unknown key: ${key}`);
 
-    this._setValue(key, this._defaultValues[key], true);
+    this._setValue(key, this._getDefaultValue(key), true, { broadcast });
   }
 
-  $cleanUp() {
-    for (const [key, defaultValue] of Object.entries(this._defaultValues)) {
-      if (!(key in this._fetchedValues))
+  $cleanUp({ broadcast } = {}) {
+    for (const [key, defaultValue] of Object.entries(this.$default)) {
+      if (!this._userValues.hasOwnProperty(key))
         continue;
-      if (JSON.stringify(this._fetchedValues[key]) == JSON.stringify(defaultValue))
-        this.$reset(key);
+      const value = JSON.stringify(this._getNonDefaultValue(key));
+      if (value == JSON.stringify(defaultValue) ||
+          (this._managedValues.hasOwnProperty(key) &&
+           value == JSON.stringify(this._managedValues[key])))
+        this.$reset(key, { broadcast });
     }
   }
 
-  _setDefaultValue(key, value) {
+  _getDefaultValue(key) {
+    if (this._managedValues.hasOwnProperty(key))
+      return this._managedValues[key];
+    return this._defaultValues[key];
+  }
+
+  _setDefaultValue(key, value, { broadcast } = {}) {
     if (!key)
       throw new Error(`missing key for default value ${value}`);
 
-    if (!(key in this._defaultValues))
+    if (!this._defaultValues.hasOwnProperty(key))
       throw new Error(`failed to set default value for unknown key: ${key}`);
 
     this._defaultValues[key] = this._clone(value);
-    if (!(key in this._fetchedValues) ||
-        JSON.stringify(this._defaultValues[key]) == JSON.stringify(this._fetchedValues[key]))
-      this.$reset(key);
+    const defaultValue = this._getDefaultValue(key);
+    if (JSON.stringify(defaultValue) == JSON.stringify(this._getNonDefaultValue[key]))
+      this.$reset(key, { broadcast });
+
+    if (broadcast === false)
+      return;
+
+    try {
+      browser.runtime.sendMessage({
+        type:  'Configs:updateDefaultValue',
+        key:   key,
+        value: defaultValue,
+      }).catch(_error => {});
+    }
+    catch(_error) {
+    }
+  }
+
+  _getNonDefaultValue(key) {
+    if (this._userValues.hasOwnProperty(key))
+      return this._userValues[key];
+    if (this._managedValues.hasOwnProperty(key) &&
+        !this._lockedManagedKeys.has(key))
+      return this._managedValues[key];
+    return undefined;
   }
 
   $addLocalLoadedObserver(observer) {
@@ -141,8 +204,6 @@ class Configs {
 
   async _tryLoad() {
     this._log('load');
-    this._applyValues(this._defaultValues);
-    let values;
     try {
       this._log(`load: try load from storage on ${location.href}`);
       const [localValues, managedValues, lockedKeys] = await Promise.all([
@@ -255,37 +316,20 @@ class Configs {
       ]);
       this._log(`load: loaded:`, { localValues, managedValues, lockedKeys });
 
-      lockedKeys.push(...this.$defaultLockedKeys);
-
-      const lockedValues = {};
-      for (const key of this.$defaultLockedKeys) {
-        lockedValues[key] = this._defaultValues[key];
-      }
+      lockedKeys.push(...this._lockedDefaultKeys);
 
       if (managedValues) {
-        const defaultKeys = new Set();
         for (const [key, locked] of Object.entries(managedValues)) {
           if (!key.endsWith(':locked'))
             continue;
-          if (!locked)
-            defaultKeys.add(key.replace(/:locked$/, ''));
-          delete managedValues[key];
-        }
-        for (const [key, value] of Object.entries(managedValues)) {
-          if (defaultKeys.has(key)) {
-            this._defaultValues[key] = value;
-            delete managedValues[key];
-          }
-          else {
-            lockedValues[key] = value;
-            lockedKeys.push(key);
-          }
+          const plainKey = key.replace(/:locked$/, '');
+          this._managedValues[plainKey] = managedValues[plainKey];
+          if (locked)
+            this._lockedManagedKeys.add(plainKey);
         }
       }
 
-      values = { ...(localValues || {}), ...lockedValues };
-      this._fetchedValues = this._clone(values);
-      this._applyValues(values);
+      this._userValues = this._clone({ ...(localValues || {}) });
       this._log('load: values are applied');
 
       for (const key of new Set(lockedKeys)) {
@@ -318,53 +362,67 @@ class Configs {
         this.__ConfigsMigration__userValeusSameToDefaultAreCleared = true;
       }
 
-      return values;
+      return this.$all;
     }
     catch(e) {
       this._log('load: fatal error: ', e, e.stack);
       throw e;
     }
   }
-  _applyValues(values) {
-    for (const [key, value] of Object.entries(values)) {
-      if (this._locked.has(key))
-        continue;
-      this._lastValues[key] = value;
-      if (key in this)
-        continue;
-      Object.defineProperty(this, key, {
-        get: () => this._lastValues[key],
-        set: (value) => this._setValue(key, value),
-        enumerable: true,
-      });
-    }
+
+  _getValue(key) {
+    if (this._lockedManagedKeys.has(key))
+      return this._managedValues[key];
+    if (this._lockedDefaultKeys.has(key))
+      return this._defaultValues[key];
+    if (this._lockedUserKeys.has(key))
+      return this._userValues[key] || this._getDefaultValue(key);
+    if (this._userValues.hasOwnProperty(key))
+      return this._userValues[key];
+    if (this._managedValues.hasOwnProperty(key))
+      return this._managedValues[key];
+    if (this._defaultValues.hasOwnProperty(key))
+      return this._defaultValues[key];
+    throw new Error(`invalid access: unknown key ${key}`);
   }
 
-  _setValue(key, value, force = false) {
-    if (this._locked.has(key)) {
+  _setValue(key, value, force = false, { broadcast } = {}) {
+    const newValue = this._clone(value);
+
+    if (this._lockedDefaultKeys.has(key) ||
+        this._lockedManagedKeys.has(key) ||
+        this._lockedUserKeys.has(key)) {
       this._log(`warning: ${key} is locked and not updated`);
-      return value;
+      return newValue;
     }
 
     const stringified = JSON.stringify(value);
-    if (stringified == JSON.stringify(this._lastValues[key]) && !force)
-      return value;
+    if (stringified == JSON.stringify(this._userValues[key]) && !force) {
+      this._log(`skip: ${key} is not changed`);
+      return newValue;
+    }
 
-    const shouldReset = stringified == JSON.stringify(this._defaultValues[key]);
+    const oldValue = this._getValue(key);
+
+    const shouldReset = stringified == JSON.stringify(this._getDefaultValue(key));
     this._log(`set: ${key} = ${value}${shouldReset ? ' (reset to default)' : ''}`);
-    this._lastValues[key] = value;
+    if (shouldReset)
+      delete this._userValues[key];
+    else
+      this._userValues[key] = newValue;
+
+    if (broadcast === false)
+      return newValue;
 
     const update = {};
-    update[key] = value;
+    update[key] = newValue;
     try {
-      this._updating.set(key, value);
+      this._updating.set(key, newValue);
       const updated = shouldReset ?
         browser.storage.local.remove([key]).then(() => {
-          delete this._fetchedValues[key];
           this._log('local: successfully removed ', key);
         }) :
         browser.storage.local.set(update).then(() => {
-          this._fetchedValues[key] = this._clone(value);
           this._log('local: successfully saved ', update);
         });
       updated
@@ -375,8 +433,8 @@ class Configs {
             // failsafe: on Thunderbird updates sometimes won't be notified to the page itself.
             const changes = {};
             changes[key] = {
-              oldValue: this[key],
-              newValue: value
+              oldValue,
+              newValue,
             };
             this._onChanged(changes);
           }, 250);
@@ -400,7 +458,7 @@ class Configs {
     catch(e) {
       this._log('sync: failed', e);
     }
-    return value;
+    return newValue;
   }
 
   $lock(key) {
@@ -414,23 +472,22 @@ class Configs {
   }
 
   $isLocked(key) {
-    return this._locked.has(key);
+    return this._lockedUserKeys.has(key);
   }
 
   _updateLocked(key, locked, { broadcast } = {}) {
-    if (locked) {
-      this._locked.add(key);
-    }
-    else {
-      this._locked.delete(key);
-    }
+    if (locked)
+      this._lockedUserKeys.add(key);
+    else
+      this._lockedUserKeys.delete(key);
+
     if (browser.runtime &&
         broadcast !== false) {
       try {
         browser.runtime.sendMessage({
           type:   'Configs:updateLocked',
           key:    key,
-          locked: this._locked.has(key)
+          locked: this._lockedUserKeys.has(key),
         }).catch(_error => {});
       }
       catch(_error) {
@@ -446,10 +503,14 @@ class Configs {
     this._log(`onMessage: ${message.type}`, message, sender);
     switch (message.type) {
       case 'Configs:getLockedKeys':
-        return Promise.resolve(Array.from(this._locked.values()));
+        return Promise.resolve(Array.from(this._lockedUserKeys));
 
       case 'Configs:updateLocked':
         this._updateLocked(message.key, message.locked, { broadcast: false });
+        break;
+
+      case 'Configs:updateDefaultValue':
+        this._setDefaultValue(message.key, message.value, { broadcast: false });
         break;
     }
   }
@@ -458,16 +519,18 @@ class Configs {
     this._log('_onChanged', changes);
     const observers = [...this._observers, ...this._changedObservers];
     for (const [key, change] of Object.entries(changes)) {
-      if ('newValue' in change) {
-        this._fetchedValues[key] = this._clone(change.newValue);
-        this._lastValues[key] = change.newValue;
-      }
-      else {
-        delete this._fetchedValues[key];
-        this._lastValues[key] = this._clone(this._defaultValues[key]);
-      }
+      if ('newValue' in change)
+        this._userValues[key] = this._clone(change.newValue);
+      else
+        delete this._userValues[key];
+
       this._updating.delete(key);
-      this.$notifyToObservers(key, change.newValue, observers, 'onChangeConfig');
+      const value = this._getNonDefaultValue(key);
+
+      if (JSON.stringify(value) == JSON.stringify(this._getDefaultValue(key)))
+        return;
+
+      this.$notifyToObservers(key, value, observers, 'onChangeConfig');
     }
   }
 
