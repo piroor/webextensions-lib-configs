@@ -510,9 +510,9 @@ class Configs {
         break;
 
       case 'Configs:updateDefaultValue': {
-        const currentValue = this[message.value];
+        const currentValue = this[message.key];
         this._setDefaultValue(message.key, message.value, { broadcast: false });
-        const newDefaultValue = this._getDefaultValue(message.value);
+        const newDefaultValue = this._getDefaultValue(message.key);
         if (currentValue != newDefaultValue &&
             this[message.key] == newDefaultValue) {
           const observers = [...this._observers, ...this._changedObservers];
