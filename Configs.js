@@ -509,9 +509,16 @@ class Configs {
         this._updateLocked(message.key, message.locked, { broadcast: false });
         break;
 
-      case 'Configs:updateDefaultValue':
+      case 'Configs:updateDefaultValue': {
+        const currentValue = this[message.value];
         this._setDefaultValue(message.key, message.value, { broadcast: false });
-        break;
+        const newDefaultValue = this._getDefaultValue(message.value);
+        if (currentValue != newDefaultValue &&
+            this[message.key] == newDefaultValue) {
+          const observers = [...this._observers, ...this._changedObservers];
+          this.$notifyToObservers(message.key, message.value, observers, 'onChangeConfig');
+        }
+      }; break;
     }
   }
 
