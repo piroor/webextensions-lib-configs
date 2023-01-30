@@ -125,10 +125,21 @@ class Configs {
     if (!this._defaultValues.hasOwnProperty(key))
       throw new Error(`failed to set default value for unknown key: ${key}`);
 
+    const currentValue = this[key];
+    const currentDefaultValue = this._getDefaultValue(key);
+
     this._defaultValues[key] = this._clone(value);
     const defaultValue = this._getDefaultValue(key);
     if (JSON.stringify(defaultValue) == JSON.stringify(this._getNonDefaultValue[key]))
       this.$reset(key, { broadcast });
+
+    const newDefaultValue = this._getDefaultValue(key);
+    if (currentValue == currentDefaultValue &&
+        currentValue != newDefaultValue &&
+        this[key] == newDefaultValue) {
+      const observers = [...this._observers, ...this._changedObservers];
+      this.$notifyToObservers(key, value, observers, 'onChangeConfig');
+    }
 
     if (broadcast === false)
       return;
@@ -509,16 +520,9 @@ class Configs {
         this._updateLocked(message.key, message.locked, { broadcast: false });
         break;
 
-      case 'Configs:updateDefaultValue': {
-        const currentValue = this[message.key];
+      case 'Configs:updateDefaultValue':
         this._setDefaultValue(message.key, message.value, { broadcast: false });
-        const newDefaultValue = this._getDefaultValue(message.key);
-        if (currentValue != newDefaultValue &&
-            this[message.key] == newDefaultValue) {
-          const observers = [...this._observers, ...this._changedObservers];
-          this.$notifyToObservers(message.key, message.value, observers, 'onChangeConfig');
-        }
-      }; break;
+        break;
     }
   }
 
