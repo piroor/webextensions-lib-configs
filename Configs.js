@@ -330,13 +330,13 @@ class Configs {
       lockedKeys.push(...this._lockedDefaultKeys);
 
       if (managedValues) {
-        for (const [key, locked] of Object.entries(managedValues)) {
-          if (!key.endsWith(':locked'))
+        for (const [key, value] of Object.entries(managedValues)) {
+          if (key.endsWith(':locked'))
             continue;
-          const plainKey = key.replace(/:locked$/, '');
-          this._managedValues[plainKey] = managedValues[plainKey];
+          const locked = managedValues[`${key}:locked`] !== false;
+          this._managedValues[key] = value;
           if (locked)
-            this._lockedManagedKeys.add(plainKey);
+            this._lockedManagedKeys.add(key);
         }
       }
 
