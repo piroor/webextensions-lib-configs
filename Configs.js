@@ -1,5 +1,5 @@
 /*
- license: The MIT License, Copyright (c) 2016-2018 YUKI "Piro" Hiroshi
+ license: The MIT License, Copyright (c) 2016-2023 YUKI "Piro" Hiroshi
  original:
    http://github.com/piroor/webextensions-lib-configs
 */
@@ -428,7 +428,9 @@ class Configs {
     const update = {};
     update[key] = newValue;
     try {
-      this._updating.set(key, newValue);
+      const updatingValues = this._updating.get(key) || [];
+      updatingValues.push(newValue);
+      this._updating.set(key, updatingValues);
       const updated = shouldReset ?
         browser.storage.local.remove([key]).then(() => {
           this._log('local: successfully removed ', key);
@@ -439,7 +441,9 @@ class Configs {
       updated
         .then(() => {
           setTimeout(() => {
-            if (!this._updating.has(key))
+            const updatingValues = this._updating.get(key);
+            if (!updatingValues ||
+                !updatingValues.includes(newValue))
               return;
             // failsafe: on Thunderbird updates sometimes won't be notified to the page itself.
             const changes = {};
@@ -530,12 +534,32 @@ class Configs {
     this._log('_onChanged', changes);
     const observers = [...this._observers, ...this._changedObservers];
     for (const [key, change] of Object.entries(changes)) {
-      if ('newValue' in change)
-        this._userValues[key] = this._clone(change.newValue);
-      else
-        delete this._userValues[key];
+      // storage.local.onChanged is sometimes notified with delay, and it
+      // unexpctedly reverts stored user value after it is changed multiple
+      // times in short time range, and it may produce "ghost value" problem, like:
+      // 1. setting to "true" (updates the stored value to "true" immediately)
+      // 2. setting to "false" (updates the stored value to "false" immediately)
+      // 3. "true" is notified (updates the stored value to "true" with delay)
+      // 4. getting the value - it gots "true" instead of "false"!
+      // To avoid such problems, we need to skip applying notified new value
+      // if the notification is from a local change.
+      const updatingValues = this._updating.get(key);
+      if (updatingValues &&
+          updatingValues[0] == change.newValue) {
+        updatingValues.shift();
+      }
+      else {
+        if ('newValue' in change)
+          this._userValues[key] = this._clone(change.newValue);
+        else
+          delete this._userValues[key];
+      }
 
-      this._updating.delete(key);
+      if (!updatingValues || updatingValues.length == 0)
+        this._updating.delete(key);
+      else
+        this._updating.set(key, updatingValues);
+
       const value = this._getNonDefaultValue(key);
 
       if (JSON.stringify(value) == JSON.stringify(this._getDefaultValue(key)))
