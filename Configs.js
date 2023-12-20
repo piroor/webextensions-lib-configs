@@ -84,6 +84,11 @@ class Configs {
       '__ConfigsMigration__userValeusSameToDefaultAreCleared',
     ];
     this.$loaded = this._load();
+
+    this.$listeningChanges = false;
+    browser.storage.onChanged.addListener(this._onChanged.bind(this));
+    this.$listeningMessages = false;
+    browser.runtime.onMessage.addListener(this._onMessage.bind(this));
   }
 
   $reset(key, { broadcast } = {}) {
@@ -347,7 +352,7 @@ class Configs {
         this._updateLocked(key, true);
       }
       this._log('load: locked state is applied');
-      browser.storage.onChanged.addListener(this._onChanged.bind(this));
+      this.$listeningChanges = true;
       if (this.sync &&
           (this._syncKeys ||
            this._syncKeys.length > 0)) {
@@ -366,7 +371,7 @@ class Configs {
           return null;
         }
       }
-      browser.runtime.onMessage.addListener(this._onMessage.bind(this));
+      this.$listeningMessages = true;
 
       if (!this.__ConfigsMigration__userValeusSameToDefaultAreCleared) {
         this.$cleanUp();
@@ -511,7 +516,8 @@ class Configs {
   }
 
   _onMessage(message, sender) {
-    if (!message ||
+    if (!this.$listeningMessages ||
+        !message ||
         typeof message.type != 'string')
       return;
 
@@ -531,6 +537,9 @@ class Configs {
   }
 
   _onChanged(changes) {
+    if (!this.$listeningChanges)
+      return;
+
     this._log('_onChanged', changes);
     const observers = [...this._observers, ...this._changedObservers];
     for (const [key, change] of Object.entries(changes)) {
