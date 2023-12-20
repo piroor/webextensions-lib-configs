@@ -85,8 +85,11 @@ class Configs {
     ];
     this.$loaded = this._load();
 
+    this.$preReceivedChanges = [];
     this.$listeningChanges = false;
     browser.storage.onChanged.addListener(this._onChanged.bind(this));
+
+    this.$preReceivedMessages = [];
     this.$listeningMessages = false;
     browser.runtime.onMessage.addListener(this._onMessage.bind(this));
   }
@@ -378,6 +381,21 @@ class Configs {
         this.__ConfigsMigration__userValeusSameToDefaultAreCleared = true;
       }
 
+      if (this.$preReceivedChanges.length > 0) {
+        const changes = [...this.$preReceivedChanges];
+        this.$preReceivedChanges = [];
+        for (const change of changes) {
+          this._onChanged(change);
+        }
+      }
+      if (this.$preReceivedMessages.length > 0) {
+        const messages = [...this.$preReceivedMessages];
+        this.$preReceivedMessages = [];
+        for (const message of messages) {
+          this._onMessage(message.message, message.sender);
+        }
+      }
+
       return this.$all;
     }
     catch(e) {
@@ -516,10 +534,14 @@ class Configs {
   }
 
   _onMessage(message, sender) {
-    if (!this.$listeningMessages ||
-        !message ||
+    if (!message ||
         typeof message.type != 'string')
       return;
+
+    if (!this.$listeningMessages) {
+      this.$preReceivedMessages.push({ message, sender });
+      return;
+    }
 
     this._log(`onMessage: ${message.type}`, message, sender);
     switch (message.type) {
@@ -537,8 +559,10 @@ class Configs {
   }
 
   _onChanged(changes) {
-    if (!this.$listeningChanges)
+    if (!this.$listeningChanges) {
+      this.$preReceivedChanges.push(changes);
       return;
+    }
 
     this._log('_onChanged', changes);
     const observers = [...this._observers, ...this._changedObservers];
