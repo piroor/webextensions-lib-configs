@@ -381,20 +381,22 @@ class Configs {
         this.__ConfigsMigration__userValeusSameToDefaultAreCleared = true;
       }
 
-      if (this.$preReceivedChanges.length > 0) {
-        const changes = [...this.$preReceivedChanges];
-        this.$preReceivedChanges = [];
-        for (const change of changes) {
-          this._onChanged(change);
+      this.$_promisedLoad = this.$_promisedLoad.then(() => {
+        if (this.$preReceivedChanges.length > 0) {
+          const changes = [...this.$preReceivedChanges];
+          this.$preReceivedChanges = [];
+          for (const change of changes) {
+            this._onChanged(change);
+          }
         }
-      }
-      if (this.$preReceivedMessages.length > 0) {
-        const messages = [...this.$preReceivedMessages];
-        this.$preReceivedMessages = [];
-        for (const message of messages) {
-          this._onMessage(message.message, message.sender);
+        if (this.$preReceivedMessages.length > 0) {
+          const messages = [...this.$preReceivedMessages];
+          this.$preReceivedMessages = [];
+          for (const message of messages) {
+            this._onMessage(message.message, message.sender);
+          }
         }
-      }
+      });
 
       return this.$all;
     }
