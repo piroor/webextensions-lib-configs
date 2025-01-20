@@ -9,8 +9,8 @@ install_dependency:
 	npm install
 
 lint:
-	$(NPM_BIN_DIR)/eslint . --ext=.js --report-unused-disable-directives
+	$(NPM_BIN_DIR)/eslint . --report-unused-disable-directives
 
 format:
-	$(NPM_BIN_DIR)/eslint . --ext=.js --report-unused-disable-directives --fix
+	$(NPM_BIN_DIR)/eslint . --report-unused-disable-directives --fix
 
