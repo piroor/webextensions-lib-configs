@@ -1,5 +1,5 @@
 /*
- license: The MIT License, Copyright (c) 2016-2025 YUKI "Piro" Hiroshi
+ license: The MIT License, Copyright (c) 2016-2023 YUKI "Piro" Hiroshi
  original:
    http://github.com/piroor/webextensions-lib-configs
 */
@@ -87,11 +87,11 @@ class Configs {
 
     this.$preReceivedChanges = [];
     this.$listeningChanges = false;
-    globalThis.browser?.storage.onChanged.addListener(this._onChanged.bind(this));
+    browser.storage.onChanged.addListener(this._onChanged.bind(this));
 
     this.$preReceivedMessages = [];
     this.$listeningMessages = false;
-    globalThis.browser?.runtime.onMessage.addListener(this._onMessage.bind(this));
+    browser.runtime.onMessage.addListener(this._onMessage.bind(this));
   }
 
   $reset(key, { broadcast } = {}) {
@@ -153,7 +153,7 @@ class Configs {
       return;
 
     try {
-      globalThis.browser?.runtime.sendMessage({
+      browser.runtime.sendMessage({
         type:  'Configs:updateDefaultValue',
         key:   key,
         value: defaultValue,
@@ -204,7 +204,7 @@ class Configs {
   }
 
   _log(message, ...args) {
-    message = `Configs[${globalThis.location?.href}] ${message}`;
+    message = `Configs[${location.href}] ${message}`;
     this.$logs = this.$logs.slice(-1000);
 
     if (!this.$logging)
@@ -222,15 +222,13 @@ class Configs {
   }
 
   async _tryLoad() {
-    if (!globalThis.browser)
-      return true;
     this._log('load');
     try {
-      this._log(`load: try load from storage on ${globalThis.location?.href}`);
+      this._log(`load: try load from storage on ${location.href}`);
       const [localValues, managedValues, lockedKeys] = await Promise.all([
         (async () => {
           try {
-            const localValues = await globalThis.browser?.storage.local.get(null); // keys must be "null" to get only stored values
+            const localValues = await browser.storage.local.get(null); // keys must be "null" to get only stored values
             this._log('load: successfully loaded local storage');
             const observers = [...this._observers, ...this._localLoadedObservers];
             for (const [key, value] of Object.entries(localValues)) {
@@ -244,7 +242,7 @@ class Configs {
           return {};
         })(),
         (async () => {
-          if (!globalThis.browser?.storage.managed) {
+          if (!browser.storage.managed) {
             this._log('load: skip managed storage');
             return null;
           }
@@ -252,7 +250,7 @@ class Configs {
             const loadManagedStorage = () => {
               let resolved = false;
               return new Promise((resolve, reject) => {
-                globalThis.browser?.storage.managed.get().then(managedValues => {
+                browser.storage.managed.get().then(managedValues => {
                   if (resolved)
                     return;
                   resolved = true;
@@ -323,7 +321,7 @@ class Configs {
         })(),
         (async () => {
           try {
-            const lockedKeys = await globalThis.browser?.runtime.sendMessage({
+            const lockedKeys = await browser.runtime.sendMessage({
               type: 'Configs:getLockedKeys'
             });
             this._log('load: successfully synchronized locked state');
@@ -362,7 +360,7 @@ class Configs {
           (this._syncKeys ||
            this._syncKeys.length > 0)) {
         try {
-          globalThis.browser?.storage.sync.get(this._syncKeys).then(syncedValues => {
+          browser.storage.sync.get(this._syncKeys).then(syncedValues => {
             this._log('load: successfully loaded sync storage');
             if (!syncedValues)
               return;
@@ -459,10 +457,10 @@ class Configs {
       updatingValues.push(newValue);
       this._updating.set(key, updatingValues);
       const updated = shouldReset ?
-        globalThis.browser?.storage.local.remove([key]).then(() => {
+        browser.storage.local.remove([key]).then(() => {
           this._log('local: successfully removed ', key);
         }) :
-        globalThis.browser?.storage.local.set(update).then(() => {
+        browser.storage.local.set(update).then(() => {
           this._log('local: successfully saved ', update);
         });
       updated
@@ -488,11 +486,11 @@ class Configs {
     try {
       if (this.sync && this._syncKeys.includes(key)) {
         if (shouldReset)
-          globalThis.browser?.storage.sync.remove([key]).then(() => {
+          browser.storage.sync.remove([key]).then(() => {
             this._log('sync: successfully removed', update);
           });
         else
-          globalThis.browser?.storage.sync.set(update).then(() => {
+          browser.storage.sync.set(update).then(() => {
             this._log('sync: successfully synced', update);
           });
       }
@@ -523,10 +521,10 @@ class Configs {
     else
       this._lockedUserKeys.delete(key);
 
-    if (globalThis.browser?.runtime &&
+    if (browser.runtime &&
         broadcast !== false) {
       try {
-        globalThis.browser?.runtime.sendMessage({
+        browser.runtime.sendMessage({
           type:   'Configs:updateLocked',
           key:    key,
           locked: this._lockedUserKeys.has(key),
