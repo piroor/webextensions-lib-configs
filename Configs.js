@@ -24,6 +24,7 @@ Only values different from [default] are stored and synchronized.
 */
 
 const OBSERVABLE_AREA = new Set([
+  'internal', // TST internal
   'local',
   'sync',
   'managed',
@@ -482,7 +483,7 @@ class Configs {
               oldValue,
               newValue,
             };
-            this._onChanged(changes);
+            this._onChanged(changes, 'internal');
           }, 250);
         });
     }
@@ -575,7 +576,7 @@ class Configs {
       return;
     }
 
-    this._log('_onChanged', changes);
+    this._log('_onChanged ', areaName, changes);
     const observers = [...this._observers, ...this._changedObservers];
     for (const [key, change] of Object.entries(changes)) {
       // storage.local.onChanged is sometimes notified with delay, and it
