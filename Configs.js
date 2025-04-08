@@ -393,7 +393,7 @@ class Configs {
           const changes = [...this.$preReceivedChanges];
           this.$preReceivedChanges = [];
           for (const change of changes) {
-            this._onChanged(change);
+            this._onChanged(change, 'internal');
           }
         }
         if (this.$preReceivedMessages.length > 0) {
