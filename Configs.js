@@ -23,6 +23,12 @@ There are multiple level values:
 Only values different from [default] are stored and synchronized.
 */
 
+const OBSERVABLE_AREA = new Set([
+  'local',
+  'sync',
+  'managed',
+]);
+
 // eslint-disable-next-line no-unused-vars
 class Configs {
   constructor(
@@ -560,7 +566,10 @@ class Configs {
     }
   }
 
-  _onChanged(changes) {
+  _onChanged(changes, areaName) {
+    if (!OBSERVABLE_AREA.has(areaName))
+      return;
+
     if (!this.$listeningChanges) {
       this.$preReceivedChanges.push(changes);
       return;
