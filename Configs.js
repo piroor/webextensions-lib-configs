@@ -38,7 +38,7 @@ class Configs {
   ) {
     this._defaultValues = {
       ...this._clone(defaults),
-      __ConfigsMigration__userValeusSameToDefaultAreCleared: false,
+      __ConfigsMigration__userValuesSameToDefaultAreCleared: false,
     };
     this._lockedDefaultKeys = new Set();
 
@@ -88,7 +88,7 @@ class Configs {
       ...(localKeys ?
         Object.keys(defaults).filter(x => !localKeys.includes(x)) :
         (syncKeys || [])),
-      '__ConfigsMigration__userValeusSameToDefaultAreCleared',
+      '__ConfigsMigration__userValuesSameToDefaultAreCleared',
     ];
     this.$loaded = this._load();
 
@@ -322,7 +322,7 @@ class Configs {
               }
               await new Promise(resolve => setTimeout(resolve, 250));
             }
-            console.log('failed to load managed storage with 10 times retly');
+            console.log('failed to load managed storage with 10 times retry');
             resolve(null);
           });
         })(),
@@ -383,9 +383,9 @@ class Configs {
       }
       this.$listeningMessages = true;
 
-      if (!this.__ConfigsMigration__userValeusSameToDefaultAreCleared) {
+      if (!this.__ConfigsMigration__userValuesSameToDefaultAreCleared) {
         this.$cleanUp();
-        this.__ConfigsMigration__userValeusSameToDefaultAreCleared = true;
+        this.__ConfigsMigration__userValuesSameToDefaultAreCleared = true;
       }
 
       this.$_promisedLoad = this.$_promisedLoad.then(() => {
@@ -580,12 +580,12 @@ class Configs {
     const observers = [...this._observers, ...this._changedObservers];
     for (const [key, change] of Object.entries(changes)) {
       // storage.local.onChanged is sometimes notified with delay, and it
-      // unexpctedly reverts stored user value after it is changed multiple
+      // unexpectedly reverts stored user value after it is changed multiple
       // times in short time range, and it may produce "ghost value" problem, like:
       // 1. setting to "true" (updates the stored value to "true" immediately)
       // 2. setting to "false" (updates the stored value to "false" immediately)
       // 3. "true" is notified (updates the stored value to "true" with delay)
-      // 4. getting the value - it gots "true" instead of "false"!
+      // 4. getting the value - it gets "true" instead of "false"!
       // To avoid such problems, we need to skip applying notified new value
       // if the notification is from a local change.
       const updatingValues = this._updating.get(key);
