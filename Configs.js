@@ -585,7 +585,7 @@ class Configs {
       // 1. setting to "true" (updates the stored value to "true" immediately)
       // 2. setting to "false" (updates the stored value to "false" immediately)
       // 3. "true" is notified (updates the stored value to "true" with delay)
-      // 4. getting the value - it gots "true" instead of "false"!
+      // 4. getting the value - it gets "true" instead of "false"!
       // To avoid such problems, we need to skip applying notified new value
       // if the notification is from a local change.
       const updatingValues = this._updating.get(key);
