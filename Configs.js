@@ -580,7 +580,7 @@ class Configs {
     const observers = [...this._observers, ...this._changedObservers];
     for (const [key, change] of Object.entries(changes)) {
       // storage.local.onChanged is sometimes notified with delay, and it
-      // unexpctedly reverts stored user value after it is changed multiple
+      // unexpectedly reverts stored user value after it is changed multiple
       // times in short time range, and it may produce "ghost value" problem, like:
       // 1. setting to "true" (updates the stored value to "true" immediately)
       // 2. setting to "false" (updates the stored value to "false" immediately)
