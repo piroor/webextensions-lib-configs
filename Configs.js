@@ -38,7 +38,7 @@ class Configs {
   ) {
     this._defaultValues = {
       ...this._clone(defaults),
-      __ConfigsMigration__userValeusSameToDefaultAreCleared: false,
+      __ConfigsMigration__userValuesSameToDefaultAreCleared: false,
     };
     this._lockedDefaultKeys = new Set();
 
@@ -88,7 +88,7 @@ class Configs {
       ...(localKeys ?
         Object.keys(defaults).filter(x => !localKeys.includes(x)) :
         (syncKeys || [])),
-      '__ConfigsMigration__userValeusSameToDefaultAreCleared',
+      '__ConfigsMigration__userValuesSameToDefaultAreCleared',
     ];
     this.$loaded = this._load();
 
@@ -383,9 +383,9 @@ class Configs {
       }
       this.$listeningMessages = true;
 
-      if (!this.__ConfigsMigration__userValeusSameToDefaultAreCleared) {
+      if (!this.__ConfigsMigration__userValuesSameToDefaultAreCleared) {
         this.$cleanUp();
-        this.__ConfigsMigration__userValeusSameToDefaultAreCleared = true;
+        this.__ConfigsMigration__userValuesSameToDefaultAreCleared = true;
       }
 
       this.$_promisedLoad = this.$_promisedLoad.then(() => {
