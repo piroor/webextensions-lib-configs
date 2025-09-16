@@ -322,7 +322,7 @@ class Configs {
               }
               await new Promise(resolve => setTimeout(resolve, 250));
             }
-            console.log('failed to load managed storage with 10 times retly');
+            console.log('failed to load managed storage with 10 times retry');
             resolve(null);
           });
         })(),
