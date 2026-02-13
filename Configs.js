@@ -579,6 +579,11 @@ class Configs {
     this._log('_onChanged ', areaName, changes);
     const observers = [...this._observers, ...this._changedObservers];
     for (const [key, change] of Object.entries(changes)) {
+      if (areaName == 'sync') {
+        this[key] = change.newValue;
+        continue;
+      }
+
       // storage.local.onChanged is sometimes notified with delay, and it
       // unexpectedly reverts stored user value after it is changed multiple
       // times in short time range, and it may produce "ghost value" problem, like:
