@@ -1,5 +1,5 @@
 /*
- license: The MIT License, Copyright (c) 2016-2023 YUKI "Piro" Hiroshi
+ license: The MIT License, Copyright (c) 2016-2026 YUKI "Piro" Hiroshi
  original:
    http://github.com/piroor/webextensions-lib-configs
 */
@@ -90,7 +90,14 @@ class Configs {
         (syncKeys || [])),
       '__ConfigsMigration__userValuesSameToDefaultAreCleared',
     ];
-    this.$loaded = this._load();
+    this.$localLoaded = this._load();
+    this.$syncLoaded = new Promise((resolve, _reject) => {
+      this._syncLoadedResolver = resolve;
+    });
+    this.$loaded = Promise.all([
+      this.$localLoaded,
+      this.$syncLoaded,
+    ]);
 
     this.$preReceivedChanges = [];
     this.$listeningChanges = false;
@@ -374,6 +381,7 @@ class Configs {
             for (const key of Object.keys(syncedValues)) {
               this[key] = syncedValues[key];
             }
+            this._syncLoadedResolver();
           });
         }
         catch(e) {

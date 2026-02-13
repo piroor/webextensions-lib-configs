@@ -70,13 +70,17 @@ var configs = new Configs({
 });
 ```
 
-The instance has a built-in property `$loaded`. It is a `Promise`, so you can do something after all stored user values are loaded:
+The instance has built-in properties: `$loaded`, `$localLoaded` and `$syncLoaded`.
+They are `Promise`s, so you can do something after all stored user values are loaded:
 
 ```javascript
 configs.$loaded.then(function() {
   MyService.start();
 });
 ```
+
+You should use `$loaded` in general.
+Please use `$localLoaded` and '`$syncLoaded` only when you really need to do more performance tuning.
 
 After all values are loaded, you can access loaded values via its own properties same to the given default values:
 
