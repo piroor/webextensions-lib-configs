@@ -637,6 +637,8 @@ class Configs {
   }
 
   _clone(value) {
+    if (!value || typeof value != 'object')
+      return value;
     return JSON.parse(JSON.stringify(value));
   }
 };
