@@ -469,7 +469,8 @@ class Configs {
     update[key] = newValue;
     try {
       const updatingValues = this._updating.get(key) || [];
-      updatingValues.push(newValue);
+      const serializedValue = newValue && typeof newValue == 'object' ? JSON.stringify(newValue) : newValue;
+      updatingValues.push(serializedValue);
       this._updating.set(key, updatingValues);
       const updated = shouldReset ?
         browser.storage.local.remove([key]).then(() => {
@@ -483,7 +484,7 @@ class Configs {
           setTimeout(() => {
             const updatingValues = this._updating.get(key);
             if (!updatingValues ||
-                !updatingValues.includes(newValue))
+                !updatingValues.includes(serializedValue))
               return;
             // failsafe: on Thunderbird updates sometimes won't be notified to the page itself.
             const changes = {};
@@ -606,11 +607,14 @@ class Configs {
       // To avoid such problems, we need to skip applying notified new value
       // if the notification is from a local change.
       const updatingValues = this._updating.get(key);
-      if (updatingValues &&
-          updatingValues[0] == change.newValue) {
-        updatingValues.shift();
-      }
-      else {
+      const serializedValue = change.newValue && typeof change.newValue == 'object' ? JSON.stringify(change.newValue) : change.newValue;
+      const indexOfNotifiedValue = updatingValues ? updatingValues.indexOf(serializedValue) : -1;
+      const hasNewerValue = indexOfNotifiedValue > -1 ?
+        updatingValues.some((value, index) => index > indexOfNotifiedValue && value !== serializedValue) :
+        false;
+      if (indexOfNotifiedValue > -1)
+        updatingValues.splice(indexOfNotifiedValue, 1);
+      if (!hasNewerValue) {
         if ('newValue' in change)
           this._userValues[key] = this._clone(change.newValue);
         else
