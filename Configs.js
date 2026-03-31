@@ -587,6 +587,10 @@ class Configs {
     this._log('_onChanged ', areaName, changes);
     const observers = [...this._observers, ...this._changedObservers];
     for (const [key, change] of Object.entries(changes)) {
+      if (change.oldValue === change.newValue) {
+        continue;
+      }
+
       if (areaName == 'sync') {
         this[key] = change.newValue;
         continue;
