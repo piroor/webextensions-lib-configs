@@ -106,6 +106,8 @@ class Configs {
     this.$preReceivedMessages = [];
     this.$listeningMessages = false;
     browser.runtime.onMessage.addListener(this._onMessage.bind(this));
+
+    this.$throttledNotifiedKeys = new Map();
   }
 
   $reset(key, { broadcast } = {}) {
@@ -636,12 +638,18 @@ class Configs {
   }
 
   $notifyToObservers(key, value, observers, observerMethod) {
+    if (this.$throttledNotifiedKeys.has(key))
+      clearTimeout(this.$throttledNotifiedKeys.get(key));
+
+    this.$throttledNotifiedKeys.set(key, setTimeout(() => {
+      this.$throttledNotifiedKeys.delete(key);
     for (const observer of observers) {
       if (typeof observer === 'function')
         observer(key, value);
       else if (observer && typeof observer[observerMethod] === 'function')
         observer[observerMethod](key, value);
     }
+    }, 250));
   }
 
   _clone(value) {
