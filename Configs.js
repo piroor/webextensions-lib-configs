@@ -643,12 +643,12 @@ class Configs {
 
     this.$throttledNotifiedKeys.set(key, setTimeout(() => {
       this.$throttledNotifiedKeys.delete(key);
-    for (const observer of observers) {
-      if (typeof observer === 'function')
-        observer(key, value);
-      else if (observer && typeof observer[observerMethod] === 'function')
-        observer[observerMethod](key, value);
-    }
+      for (const observer of observers) {
+        if (typeof observer === 'function')
+          observer(key, value);
+        else if (observer && typeof observer[observerMethod] === 'function')
+          observer[observerMethod](key, value);
+      }
     }, 250));
   }
 
