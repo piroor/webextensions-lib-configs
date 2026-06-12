@@ -384,10 +384,14 @@ class Configs {
               this[key] = syncedValues[key];
             }
             this._syncLoadedResolver();
+          }).catch(error => {
+            this._log('load: failed to read sync storage (asynchronously): ', String(error));
+            this._syncLoadedResolver(error);
           });
         }
-        catch(e) {
-          this._log('load: failed to read sync storage: ', String(e));
+        catch(error) {
+          this._log('load: failed to read sync storage (synchronously): ', String(error));
+          this._syncLoadedResolver(error);
           return null;
         }
       }
