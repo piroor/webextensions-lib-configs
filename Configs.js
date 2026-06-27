@@ -599,6 +599,11 @@ class Configs {
       }
 
       if (areaName == 'sync') {
+        if (!('newValue' in change) &&
+            !(key in this._userValues)) {
+          // it is a notified "reset" - we do nothing here.
+          continue;
+        }
         this[key] = change.newValue;
         continue;
       }
