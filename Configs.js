@@ -640,7 +640,7 @@ class Configs {
       const value = this._getNonDefaultValue(key);
 
       if (JSON.stringify(value) == JSON.stringify(this._getDefaultValue(key)))
-        return;
+        continue;
 
       this.$notifyToObservers(key, value, observers, 'onChangeConfig');
     }
