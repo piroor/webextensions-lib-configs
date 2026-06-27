@@ -598,12 +598,14 @@ class Configs {
         continue;
       }
 
+      if (!('newValue' in change)) { // it is a notified "reset"
+        delete this._userValues[key];
+        if (areaName == 'sync')
+          this.$reset(key);
+        continue;
+      }
+
       if (areaName == 'sync') {
-        if (!('newValue' in change) &&
-            !(key in this._userValues)) {
-          // it is a notified "reset" - we do nothing here.
-          continue;
-        }
         this[key] = change.newValue;
         continue;
       }
