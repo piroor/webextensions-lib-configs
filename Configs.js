@@ -227,9 +227,12 @@ class Configs {
       return;
 
     if (typeof this.$logger === 'function')
-      this.$logger(message, ...args);
+      this.$logger(message, ...this._populateLogArgs(args));
     else
-      console.log(message, ...args);
+      console.log(message, ...this._populateLogArgs(args));
+  }
+  _populateLogArgs(args) {
+    return args.map(arg => typeof arg == 'function' ? arg() : arg);
   }
 
   _load() {
@@ -591,7 +594,9 @@ class Configs {
       return;
     }
 
-    this._log('_onChanged ', areaName, changes);
+    this._log('_onChanged ', areaName, () => Object.entries(changes).map(
+      ([key, value]) => [key, ...(value && typeof value == 'object' ? ['old', 'oldValue' in value ? value.oldValue : '<MISSING>', 'new', 'newValue' in value ? value.newValue : '<MISSING>'] : [value])]
+    ).flat());
     const observers = [...this._observers, ...this._changedObservers];
     for (const [key, change] of Object.entries(changes)) {
       if (change.oldValue === change.newValue) {
