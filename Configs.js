@@ -162,7 +162,7 @@ class Configs {
         currentValue != newDefaultValue &&
         this[key] == newDefaultValue) {
       const observers = [...this._observers, ...this._changedObservers];
-      this.$notifyToObservers(key, value, observers, 'onChangeConfig');
+      this.$notifyToObservers({ key, value, observers }, 'onChangeConfig');
     }
 
     if (broadcast === false)
@@ -251,7 +251,7 @@ class Configs {
             this._log('load: successfully loaded local storage');
             const observers = [...this._observers, ...this._localLoadedObservers];
             for (const [key, value] of Object.entries(localValues)) {
-              this.$notifyToObservers(key, value, observers, 'onLocalLoaded');
+              this.$notifyToObservers({ key, value, observers }, 'onLocalLoaded');
             }
             return localValues;
           }
@@ -603,14 +603,13 @@ class Configs {
         continue;
       }
 
-      if (!('newValue' in change)) { // it is a notified "reset"
+      const reset = !('newValue' in change);
+      if (reset) {
         delete this._userValues[key];
         if (areaName == 'sync')
           this.$reset(key);
-        continue;
       }
-
-      if (areaName == 'sync') {
+      else if (areaName == 'sync') {
         this[key] = change.newValue;
         continue;
       }
@@ -646,14 +645,14 @@ class Configs {
 
       const value = this._getNonDefaultValue(key);
 
-      if (JSON.stringify(value) == JSON.stringify(this._getDefaultValue(key)))
+      if (JSON.stringify(value) === JSON.stringify(this._getDefaultValue(key)))
         continue;
 
-      this.$notifyToObservers(key, value, observers, 'onChangeConfig');
+      this.$notifyToObservers({ key, value, reset, observers }, 'onChangeConfig');
     }
   }
 
-  $notifyToObservers(key, value, observers, observerMethod) {
+  $notifyToObservers({ key, value, reset, observers }, observerMethod) {
     if (this.$throttledNotifiedKeys.has(key))
       clearTimeout(this.$throttledNotifiedKeys.get(key));
 
@@ -661,9 +660,9 @@ class Configs {
       this.$throttledNotifiedKeys.delete(key);
       for (const observer of observers) {
         if (typeof observer === 'function')
-          observer(key, value);
+          observer(key, value, { reset });
         else if (observer && typeof observer[observerMethod] === 'function')
-          observer[observerMethod](key, value);
+          observer[observerMethod](key, value, { reset });
       }
     }, 250));
   }
